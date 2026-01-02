@@ -1,8 +1,11 @@
-import { Component, signal, computed, OnInit } from '@angular/core';
+import { Component, signal, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { environment } from '../environments/environment';
-import { HttpClientModule } from '@angular/common/http';
+import { HttpClient, HttpClientModule } from '@angular/common/http';
+import { EMPTY } from 'rxjs';
+import { catchError, finalize } from 'rxjs/operators';
+import { PageShell } from '../page-shell/page-shell';
 
 export const COUNTRY_INCOME_GROUPS: Record<string, string> = {
   // LOW / LOWER-MIDDLE INCOME ECONOMIES
@@ -226,40 +229,32 @@ export const COUNTRY_INCOME_GROUPS: Record<string, string> = {
   'French Polynesia': 'UPPER',
   Oman: 'UPPER',
   Germany: 'UPPER',
-  Palau: 'UPPER'
+  Palau: 'UPPER',
 };
 
 function getIncomeGroup(country: string): string | null {
   return COUNTRY_INCOME_GROUPS[country] || null;
 }
 
-// ---------------------------------------------------------------------------
-// FEE RULES (unchanged data)
-// ---------------------------------------------------------------------------
-
 export const FEE_RULES = {
   full: {
     LOWER: {
       physician: { early: 75, late: 100 },
-      'non-physician': { early: 25, late: 40 }
+      'non-physician': { early: 25, late: 40 },
     },
     UPPER: {
       physician: { early: 200, late: 225 },
-      'non-physician': { early: 75, late: 100 }
+      'non-physician': { early: 75, late: 100 },
     },
     LOCAL: {
       physician: { early: 30, late: 80 },
-      'non-physician': { early: 20, late: 40 }
-    }
+      'non-physician': { early: 20, late: 40 },
+    },
   },
   rehab: {
-    ALL: { early: 15, late: 40 }
-  }
+    ALL: { early: 15, late: 40 },
+  },
 };
-
-// ---------------------------------------------------------------------------
-// PERIOD & INCOME LOGIC (same as original JS)
-// ---------------------------------------------------------------------------
 
 function getFeePeriod(): 'early' | 'late' {
   const today = new Date();
@@ -282,7 +277,7 @@ export function calculateFee(args: {
   const period = getFeePeriod();
 
   if (conferenceType === 'rehab') {
-    return FEE_RULES.rehab.ALL[period as 'early' | 'late'];
+    return FEE_RULES.rehab.ALL[period];
   }
 
   const groupFees = (FEE_RULES.full as any)[incomeGroup];
@@ -294,17 +289,21 @@ export function calculateFee(args: {
   return catFees[period];
 }
 
-
+type RegistrationResponse = {
+  registrationId?: string;
+  feeAmount?: number;
+  paymentStatus?: string;
+  message?: string;
+};
 
 @Component({
   selector: 'app-registration',
   standalone: true,
-  imports: [CommonModule, FormsModule, HttpClientModule],
+  imports: [CommonModule, FormsModule, HttpClientModule,PageShell],
   templateUrl: './registration.html',
   styleUrl: './registration.scss',
 })
 export class Registration implements OnInit {
-
   // Form model properties
   title = '';
   firstName = '';
@@ -332,6 +331,7 @@ export class Registration implements OnInit {
 
   // UI state
   formStatus = '';
+  submitting = false; // ✅ NEW: prevents double submit + controls UI
   successVisible = false;
   registrationCardHidden = false;
   successDetails = '';
@@ -347,18 +347,20 @@ export class Registration implements OnInit {
   showTermsModal = false;
   showCancellationModal = false;
 
-  private apiUrl = environment.apiUrl;
+  private readonly apiUrl = environment.apiUrl;
 
   countryCodes = signal<any[]>([]);
   countryCode: string = '';
   mobileExample: string = '+94 71 234 5678';
 
+  constructor(
+    private readonly http: HttpClient,
+    private readonly cdr: ChangeDetectorRef
+  ) {}
 
   async ngOnInit(): Promise<void> {
-    // Build sorted country list
     this.countries = Object.keys(COUNTRY_INCOME_GROUPS).sort();
 
-    // Initialise period texts & badge (same logic as original)
     this.currentPeriod = getFeePeriod();
     this.feePeriodBadgeText =
       this.currentPeriod === 'early'
@@ -385,14 +387,11 @@ export class Registration implements OnInit {
         .sort((a: any, b: any) => a.name.localeCompare(b.name));
 
       this.countryCodes.set(cleaned);
+      this.cdr.markForCheck();
     } catch (err) {
       console.error('Failed to fetch country codes', err);
     }
   }
-
-  // -----------------------------------------------------------------------
-  // Event handlers (replacing addEventListener / change handlers)
-  // -----------------------------------------------------------------------
 
   onCountryChange(): void {
     this.updateFeeSummary();
@@ -405,10 +404,6 @@ export class Registration implements OnInit {
   onConferenceTypeChange(): void {
     this.updateFeeSummary();
   }
-
-  // -----------------------------------------------------------------------
-  // Fee summary & conference type
-  // -----------------------------------------------------------------------
 
   private getSelectedConferenceType(): string | null {
     return this.conferenceType;
@@ -432,7 +427,7 @@ export class Registration implements OnInit {
       conferenceType,
       participantCategory,
       incomeGroup: group,
-      date: new Date()
+      date: new Date(),
     });
 
     if (fee == null) {
@@ -447,10 +442,6 @@ export class Registration implements OnInit {
     this.feeAmountDisplay = `Total Fee: USD ${fee}`;
   }
 
-  // -----------------------------------------------------------------------
-  // Modal controls (replacing data-open-modal & data-close-modal)
-  // -----------------------------------------------------------------------
-
   openModal(which: 'dataUse' | 'terms' | 'cancellation'): void {
     if (which === 'dataUse') this.showDataUseModal = true;
     if (which === 'terms') this.showTermsModal = true;
@@ -464,20 +455,15 @@ export class Registration implements OnInit {
   }
 
   onOverlayClick(event: MouseEvent, which: 'dataUse' | 'terms' | 'cancellation'): void {
-    // Match original behavior: close only if background clicked
     if (event.target === event.currentTarget) {
       this.closeModal(which);
     }
   }
 
-  // -----------------------------------------------------------------------
-  // Validation logic (ported from vanilla JS)
-  // -----------------------------------------------------------------------
-
   private setError(name: string, message: string | null): void {
     this.errorMessages = {
       ...this.errorMessages,
-      [name]: message || ''
+      [name]: message || '',
     };
   }
 
@@ -498,7 +484,7 @@ export class Registration implements OnInit {
       'country',
       'email',
       'mobile',
-      'participantCategory'
+      'participantCategory',
     ];
 
     const valueOf = (name: string): string => {
@@ -534,26 +520,22 @@ export class Registration implements OnInit {
       }
     });
 
-    // Email format
     const emailValue = (this.email || '').trim();
     if (emailValue && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(emailValue)) {
       this.setError('email', 'Please enter a valid email address.');
       valid = false;
     }
 
-    // Conference type
     if (!this.getSelectedConferenceType()) {
       this.setError('conferenceType', 'Please select a participation option.');
       valid = false;
     }
 
-    // Fee must be determined
     if (this.feeAmount == null) {
       this.setError('conferenceType', 'Fee could not be determined.');
       valid = false;
     }
 
-    // Consent checkboxes
     if (!this.consentDataUse || !this.consentTerms) {
       this.setError('consent', 'Please accept all required consents.');
       valid = false;
@@ -562,56 +544,65 @@ export class Registration implements OnInit {
     return valid;
   }
 
-  // -----------------------------------------------------------------------
-  // Submit logic (ported from original submit handler)
-  // -----------------------------------------------------------------------
+  // ✅ FIXED SUBMIT: HttpClient + finalize() so "Submitting..." never gets stuck
+  onSubmit(): void {
+    if (this.submitting) return;
 
-  async onSubmit(): Promise<void> {
     this.formStatus = '';
 
     if (!this.validateForm()) {
       this.formStatus = 'Please fix the highlighted errors.';
+      this.cdr.markForCheck();
       return;
     }
 
     const payload = this.buildPayloadFromForm();
 
-    try {
-      this.formStatus = 'Submitting registration...';
+    this.submitting = true;
+    this.formStatus = 'Submitting registration...';
+    this.cdr.markForCheck();
 
-      const res = await fetch(`${this.apiUrl}/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+    this.http
+      .post<RegistrationResponse>(`${this.apiUrl}/registrations`, payload)
+      .pipe(
+        catchError((err) => {
+          const msg =
+            err?.error?.message ||
+            err?.message ||
+            'Failed to submit registration.';
+          this.formStatus = msg;
+          this.cdr.markForCheck();
+          return EMPTY;
+        }),
+        finalize(() => {
+          this.submitting = false;
+          this.cdr.markForCheck();
+        })
+      )
+      .subscribe((data) => {
+        // If catchError returned EMPTY, subscribe won't run
+        if (!data) return;
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || 'Failed to submit registration.');
-      }
+        this.formStatus = '';
+        this.successVisible = true;
+        this.registrationCardHidden = true;
 
-      const data = await res.json();
-
-      this.formStatus = '';
-      this.successVisible = true;
-      this.registrationCardHidden = true;
-
-      const feeText =
-        typeof data.feeAmount === 'number'
-          ? data.feeAmount.toFixed(2)
-          : this.feeAmount !== null
+        const feeText =
+          typeof data.feeAmount === 'number'
+            ? data.feeAmount.toFixed(2)
+            : this.feeAmount !== null
             ? this.feeAmount.toFixed(2)
             : 'N/A';
 
-      this.successDetails = `Your registration ID is ${data.registrationId
-        }. Total fee: USD ${feeText}. Payment status: ${data.paymentStatus}.`;
-    } catch (error: any) {
-      console.error(error);
-      this.formStatus = error?.message || 'Failed to submit registration.';
-    }
+        this.successDetails = `Your registration ID is ${
+          data.registrationId ?? 'N/A'
+        }. Total fee: USD ${feeText}. Payment status: ${
+          data.paymentStatus ?? 'N/A'
+        }.`;
+
+        this.cdr.markForCheck();
+      });
   }
-
-
 
   private buildPayloadFromForm(): any {
     const conferenceType = this.getSelectedConferenceType();
@@ -630,7 +621,7 @@ export class Registration implements OnInit {
       feeAmountClient: this.feeAmount !== null ? Number(this.feeAmount) : null,
       incomeGroup: this.incomeGroup || null,
       consentDataUse: this.consentDataUse,
-      consentTerms: this.consentTerms
+      consentTerms: this.consentTerms,
     };
   }
 }

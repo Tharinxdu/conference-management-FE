@@ -1,302 +1,321 @@
-<div class="page-shell">
+<!-- <div class="page-shell">
   <header class="page-header">
     <div>
       <h1>APSC 2026 – Online Registration</h1>
       <p>Register for the APSC 2026 Conference and Rehabilitation Workshop.</p>
-    </div>
+    </div> -->
 
-    <!-- ★ EARLY BIRD / LATE BADGE (Angular-bound) -->
-    <div id="pricingPeriodBadge" class="pricing-badge">
+<!-- ★ EARLY BIRD / LATE BADGE (Angular-bound) -->
+<!-- <div id="pricingPeriodBadge" class="pricing-badge">
       {{ feePeriodBadgeText }}
     </div>
   </header>
 
-  <main class="page-main">
-    <section class="card" [class.hidden]="registrationCardHidden">
-      <form id="registrationForm" novalidate (ngSubmit)="onSubmit()">
-        <!-- SECTION 1: PERSONAL INFORMATION -->
-        <h2 class="card-title">Section 1 – Personal Information</h2>
-        <p class="card-subtitle">
-          Please provide your details as they should appear on your certificate.
-        </p>
+  <main class="page-main"> -->
+<app-page-shell title="APSC 2026 – Online Registration"
+  subtitle="Register for the APSC 2026 Conference and Rehabilitation Workshop.">
+  <!-- RIGHT SIDE OF HEADER -->
+  <div headerRight id="pricingPeriodBadge" class="pricing-badge">
+    {{ feePeriodBadgeText }}
+  </div>
 
-        <div class="form-grid">
-          <!-- Title -->
-          <div class="form-group">
-            <label for="title">Title <span class="required">*</span></label>
-            <select id="title" name="title" required [(ngModel)]="title">
-              <option value="">Select your title</option>
-              <option value="Prof.">Prof.</option>
-              <option value="Dr.">Dr.</option>
-              <option value="Mr.">Mr.</option>
-              <option value="Ms.">Ms.</option>
-              <option value="Mrs.">Mrs.</option>
-              <option value="Other">Other</option>
-            </select>
-            <div class="error-message" data-error-for="title">
-              {{ errorMessages['title'] }}
-            </div>
+  <!-- If you want logout in this page header too -->
+  <!-- <button headerRight type="button" class="secondary-button">
+    Logout
+  </button> -->
+
+  <section class="card" [class.hidden]="registrationCardHidden">
+    <form id="registrationForm" novalidate (ngSubmit)="onSubmit()">
+      <!-- SECTION 1: PERSONAL INFORMATION -->
+      <h2 class="card-title">Section 1 – Personal Information</h2>
+      <p class="card-subtitle">
+        Please provide your details as they should appear on your certificate.
+      </p>
+
+      <div class="form-grid">
+        <!-- Title -->
+        <div class="form-group">
+          <label for="title">Title <span class="required">*</span></label>
+          <select id="title" name="title" required [(ngModel)]="title" [disabled]="submitting">
+            <option value="">Select your title</option>
+            <option value="Prof.">Prof.</option>
+            <option value="Dr.">Dr.</option>
+            <option value="Mr.">Mr.</option>
+            <option value="Ms.">Ms.</option>
+            <option value="Mrs.">Mrs.</option>
+            <option value="Other">Other</option>
+          </select>
+          <div class="error-message" data-error-for="title">
+            {{ errorMessages['title'] }}
           </div>
+        </div>
 
-          <!-- First Name -->
-          <div class="form-group">
-            <label for="firstName">First Name <span class="required">*</span></label>
-            <input type="text" id="firstName" name="firstName" required [(ngModel)]="firstName" />
-            <div class="error-message" data-error-for="firstName">
-              {{ errorMessages['firstName'] }}
-            </div>
+        <!-- First Name -->
+        <div class="form-group">
+          <label for="firstName">First Name <span class="required">*</span></label>
+          <input type="text" id="firstName" name="firstName" required [(ngModel)]="firstName" [disabled]="submitting" />
+          <div class="error-message" data-error-for="firstName">
+            {{ errorMessages['firstName'] }}
           </div>
+        </div>
 
-          <!-- Last Name -->
-          <div class="form-group">
-            <label for="lastName">Last Name <span class="required">*</span></label>
-            <input type="text" id="lastName" name="lastName" required [(ngModel)]="lastName" />
-            <div class="error-message" data-error-for="lastName">
-              {{ errorMessages['lastName'] }}
-            </div>
+        <!-- Last Name -->
+        <div class="form-group">
+          <label for="lastName">Last Name <span class="required">*</span></label>
+          <input type="text" id="lastName" name="lastName" required [(ngModel)]="lastName" [disabled]="submitting" />
+          <div class="error-message" data-error-for="lastName">
+            {{ errorMessages['lastName'] }}
           </div>
+        </div>
 
-          <!-- Designation / Position -->
-          <div class="form-group">
-            <label for="designation">Designation / Position <span class="required">*</span></label>
-            <input type="text" id="designation" name="designation" required [(ngModel)]="designation" />
-            <div class="error-message" data-error-for="designation">
-              {{ errorMessages['designation'] }}
-            </div>
+        <!-- Designation / Position -->
+        <div class="form-group">
+          <label for="designation">Designation / Position <span class="required">*</span></label>
+          <input type="text" id="designation" name="designation" required [(ngModel)]="designation"
+            [disabled]="submitting" />
+          <div class="error-message" data-error-for="designation">
+            {{ errorMessages['designation'] }}
           </div>
+        </div>
 
-          <!-- Affiliated Institution / Organization -->
-          <div class="form-group full-width">
-            <label for="institution">Affiliated Institution / Organization
-              <span class="required">*</span></label>
-            <input type="text" id="institution" name="institution" required [(ngModel)]="institution" />
-            <div class="error-message" data-error-for="institution">
-              {{ errorMessages['institution'] }}
-            </div>
+        <!-- Affiliated Institution / Organization -->
+        <div class="form-group full-width">
+          <label for="institution">
+            Affiliated Institution / Organization <span class="required">*</span>
+          </label>
+          <input type="text" id="institution" name="institution" required [(ngModel)]="institution"
+            [disabled]="submitting" />
+          <div class="error-message" data-error-for="institution">
+            {{ errorMessages['institution'] }}
           </div>
+        </div>
 
-          <!-- Country of Residence -->
-          <div class="form-group">
-            <label for="country">Country of Residence <span class="required">*</span></label>
-            <select id="country" name="country" required [(ngModel)]="country" (change)="onCountryChange()">
-              <option value="">Select your country</option>
-              <option *ngFor="let c of countries" [value]="c">
-                {{ c }}
+        <!-- Country of Residence -->
+        <div class="form-group">
+          <label for="country">Country of Residence <span class="required">*</span></label>
+          <select id="country" name="country" required [(ngModel)]="country" (change)="onCountryChange()"
+            [disabled]="submitting">
+            <option value="">Select your country</option>
+            <option *ngFor="let c of countries" [value]="c">
+              {{ c }}
+            </option>
+          </select>
+          <small class="help-text">
+            Fee bands are based on conference rules for low/lower-middle vs
+            upper-middle/high income countries.
+          </small>
+          <small class="help-text">
+            For reference:
+            <a href="https://datahelpdesk.worldbank.org/knowledgebase/articles/906519-world-bank-country-and-lending-groups"
+              target="_blank" rel="noopener noreferrer">
+              View World Bank country and lending groups
+            </a>
+          </small>
+          <div class="error-message" data-error-for="country">
+            {{ errorMessages['country'] }}
+          </div>
+        </div>
+
+        <!-- Email -->
+        <div class="form-group">
+          <label for="email">Email Address <span class="required">*</span></label>
+          <input type="email" id="email" name="email" required [(ngModel)]="email" [disabled]="submitting" />
+          <small class="help-text">
+            Please enter your email correctly.
+          </small>
+          <div class="error-message" data-error-for="email">
+            {{ errorMessages['email'] }}
+          </div>
+        </div>
+
+        <!-- Mobile Number -->
+        <div class="form-group mobile-group">
+          <label> Mobile Number <span class="required">*</span> </label>
+
+          <div class="mobile-row">
+            <!-- Country Code Dropdown -->
+            <select class="country-code-select" [(ngModel)]="countryCode" name="countryCode" required
+              [disabled]="submitting">
+              <option value="" disabled>Select code</option>
+
+              <option *ngFor="let c of countryCodes()" [value]="c.dial_code">
+                {{ c.flag }} {{ c.name }} ({{ c.dial_code }})
               </option>
             </select>
-            <small class="help-text">
-              Fee bands are based on conference rules for low/lower-middle vs
-              upper-middle/high income countries.
-            </small>
-            <small class="help-text">
-              For reference:
-              <a href="https://datahelpdesk.worldbank.org/knowledgebase/articles/906519-world-bank-country-and-lending-groups"
-                target="_blank" rel="noopener noreferrer">
-                View World Bank country and lending groups
-              </a>
-            </small>
-            <div class="error-message" data-error-for="country">
-              {{ errorMessages['country'] }}
-            </div>
+
+            <!-- Local Mobile Input -->
+            <input type="tel" class="mobile-input" name="mobile" [(ngModel)]="mobile" placeholder="Enter number"
+              required [disabled]="submitting" />
           </div>
 
-          <!-- Email -->
-          <div class="form-group">
-            <label for="email">Email Address <span class="required">*</span></label>
-            <input type="email" id="email" name="email" required [(ngModel)]="email" />
-            <small class="help-text">
-              Please enter carefully — all correspondence will be sent here.
-            </small>
-            <div class="error-message" data-error-for="email">
-              {{ errorMessages['email'] }}
-            </div>
-          </div>
-
-          <!-- Mobile Number -->
-          <div class="form-group mobile-group">
-            <label>
-              Mobile Number <span class="required">*</span>
-            </label>
-
-            <div class="mobile-row">
-              <!-- Country Code Dropdown -->
-              <select class="country-code-select" [(ngModel)]="countryCode" name="countryCode" required>
-                <option value="" disabled selected>Select code</option>
-
-                <option *ngFor="let c of countryCodes()" [value]="c.dial_code">
-                  {{ c.flag }} {{ c.name }} ({{ c.dial_code }})
-                </option>
-              </select>
-
-              <!-- Local Mobile Input -->
-              <input type="tel" class="mobile-input" name="mobile" [(ngModel)]="mobile" placeholder="Enter number"
-                required />
-            </div>
-
-            <div class="error-message">
-              {{ errorMessages['mobile'] }}
-            </div>
-          </div>
-
-        </div>
-
-        <hr class="section-divider" />
-
-        <!-- SECTION 2: REGISTRATION DETAILS -->
-        <h2 class="card-title">Section 2 – Registration Details</h2>
-        <div class="form-grid">
-          <!-- Registration Category -->
-          <div class="form-group">
-            <label for="participantCategory">Registration Category <span class="required">*</span></label>
-            <select id="participantCategory" name="participantCategory" required [(ngModel)]="participantCategory"
-              (change)="onParticipantCategoryChange()">
-              <option value="">Select category</option>
-              <option value="physician">Physician</option>
-              <option value="non-physician">Non-physician</option>
-            </select>
-            <div class="error-message" data-error-for="participantCategory">
-              {{ errorMessages['participantCategory'] }}
-            </div>
+          <div class="error-message">
+            {{ errorMessages['mobile'] }}
           </div>
         </div>
+      </div>
 
-        <!-- SECTION 3: CONFERENCE PARTICIPATION -->
-        <h2 class="card-title">Section 3 – Conference Participation</h2>
-        <p class="card-subtitle">
-          You may select only one option.
-        </p>
+      <hr class="section-divider" />
+
+      <!-- SECTION 2: REGISTRATION DETAILS -->
+      <h2 class="card-title">Section 2 – Registration Details</h2>
+      <div class="form-grid">
+        <!-- Registration Category -->
         <div class="form-group">
-          <label class="radio-label">
-            <input type="radio" name="conferenceType" value="full" required [(ngModel)]="conferenceType"
-              (change)="onConferenceTypeChange()" />
-            <span>
-              Full Conference Registration (26th, 27th, 28th Nov 2026)
-            </span>
+          <label for="participantCategory">
+            Registration Category <span class="required">*</span>
           </label>
-          <label class="radio-label">
-            <input type="radio" name="conferenceType" value="rehab" required [(ngModel)]="conferenceType"
-              (change)="onConferenceTypeChange()" />
-            <span>
-              Rehabilitation Workshop (single day registration on 28th Nov 2026)
-            </span>
-          </label>
-          <div class="error-message" data-error-for="conferenceType">
-            {{ errorMessages['conferenceType'] }}
+          <select id="participantCategory" name="participantCategory" required [(ngModel)]="participantCategory"
+            (change)="onParticipantCategoryChange()" [disabled]="submitting">
+            <option value="">Select category</option>
+            <option value="physician">Physician</option>
+            <option value="non-physician">Non-physician</option>
+          </select>
+          <div class="error-message" data-error-for="participantCategory">
+            {{ errorMessages['participantCategory'] }}
           </div>
         </div>
+      </div>
 
-        <hr class="section-divider" />
+      <!-- SECTION 3: CONFERENCE PARTICIPATION -->
+      <h2 class="card-title">Section 3 – Conference Participation</h2>
+      <p class="card-subtitle">You may select only one option.</p>
 
-        <!-- FEE SUMMARY -->
-        <section class="fee-summary" id="feeSummarySection">
-          <h2 class="card-title">Fee Summary</h2>
+      <div class="form-group">
+        <label class="radio-label">
+          <input type="radio" name="conferenceType" value="full" required [(ngModel)]="conferenceType"
+            (change)="onConferenceTypeChange()" [disabled]="submitting" />
+          <span> Full Conference Registration (26th, 27th, 28th Nov 2026) </span>
+        </label>
 
-          <!-- ★ PERIOD TEXT -->
-          <p id="feePeriodText" class="fee-period-text">
-            {{ feePeriodText }}
+        <label class="radio-label">
+          <input type="radio" name="conferenceType" value="rehab" required [(ngModel)]="conferenceType"
+            (change)="onConferenceTypeChange()" [disabled]="submitting" />
+          <span>
+            Rehabilitation Workshop (single day registration on 28th Nov 2026)
+          </span>
+        </label>
+
+        <div class="error-message" data-error-for="conferenceType">
+          {{ errorMessages['conferenceType'] }}
+        </div>
+      </div>
+
+      <hr class="section-divider" />
+
+      <!-- FEE SUMMARY -->
+      <section class="fee-summary" id="feeSummarySection">
+        <h2 class="card-title">Fee Summary</h2>
+
+        <p id="feePeriodText" class="fee-period-text">
+          {{ feePeriodText }}
+        </p>
+
+        <div class="fee-amount" id="feeAmountDisplay">
+          {{ feeAmountDisplay }}
+        </div>
+
+        <input type="hidden" id="feeAmount" name="feeAmount" [value]="feeAmount !== null ? feeAmount : ''" />
+        <input type="hidden" id="incomeGroup" name="incomeGroup" [value]="incomeGroup || ''" />
+      </section>
+
+      <hr class="section-divider" />
+
+      <!-- SECTION 4: CONSENT & DECLARATIONS -->
+      <h2 class="card-title">Section 4 – Consent & Declarations</h2>
+
+      <div class="consent-item">
+        <div class="consent-text">
+          <strong>Consent for Data Use</strong>
+          <p>
+            By submitting this form, I consent to the collection and
+            processing of my personal data by APSC 2026 for the purposes of
+            conference registration, communication, and event management, in
+            accordance with the APSC 2026 Privacy Policy.
           </p>
-
-          <div class="fee-amount" id="feeAmountDisplay">
-            {{ feeAmountDisplay }}
-          </div>
-          <input type="hidden" id="feeAmount" name="feeAmount" [value]="feeAmount !== null ? feeAmount : ''" />
-          <input type="hidden" id="incomeGroup" name="incomeGroup" [value]="incomeGroup || ''" />
-        </section>
-
-        <hr class="section-divider" />
-
-        <!-- SECTION 4: CONSENT & DECLARATIONS -->
-        <h2 class="card-title">Section 4 – Consent & Declarations</h2>
-
-        <div class="consent-item">
-          <div class="consent-text">
-            <strong>Consent for Data Use</strong>
-            <p>
-              By submitting this form, I consent to the collection and
-              processing of my personal data by APSC 2026 for the purposes of
-              conference registration, communication, and event management, in
-              accordance with the APSC 2026 Privacy Policy.
-            </p>
-            <button type="button" class="link-button" (click)="openModal('dataUse')">
-              View Privacy &amp; Data Use Policy
-            </button>
-          </div>
-          <label class="checkbox-label">
-            <input type="checkbox" id="consentDataUse" name="consentDataUse" [(ngModel)]="consentDataUse" />
-            <span>I agree</span>
-          </label>
-        </div>
-
-        <div class="consent-item">
-          <div class="consent-text">
-            <strong>Terms &amp; Conditions</strong>
-            <p>
-              I confirm that the information provided above is true and accurate
-              to the best of my knowledge. I understand that registration is
-              confirmed only upon receipt of full payment.
-            </p>
-            <button type="button" class="link-button" (click)="openModal('terms')">
-              View Terms &amp; Conditions
-            </button>
-          </div>
-          <label class="checkbox-label">
-            <input type="checkbox" id="consentTerms" name="consentTerms" [(ngModel)]="consentTerms" />
-            <span>I accept the Terms &amp; Conditions</span>
-          </label>
-        </div>
-
-        <!-- Cancellation Policy -->
-        <div class="cancellation-block">
-          <button type="button" class="link-button" (click)="openModal('cancellation')">
-            View Cancellation Policy
+          <button type="button" class="link-button" (click)="openModal('dataUse')" [disabled]="submitting">
+            View Privacy &amp; Data Use Policy
           </button>
         </div>
 
-        <div class="error-message" data-error-for="consent">
-          {{ errorMessages['consent'] }}
-        </div>
+        <label class="checkbox-label">
+          <input type="checkbox" id="consentDataUse" name="consentDataUse" [(ngModel)]="consentDataUse"
+            [disabled]="submitting" />
+          <span>I agree</span>
+        </label>
+      </div>
 
-        <hr class="section-divider" />
-
-        <!-- SUBMIT -->
-        <div class="form-actions">
-          <button type="submit" class="primary-button">
-            Submit Registration
+      <div class="consent-item">
+        <div class="consent-text">
+          <strong>Terms &amp; Conditions</strong>
+          <p>
+            I confirm that the information provided above is true and accurate
+            to the best of my knowledge. I understand that registration is
+            confirmed only upon receipt of full payment.
+          </p>
+          <button type="button" class="link-button" (click)="openModal('terms')" [disabled]="submitting">
+            View Terms &amp; Conditions
           </button>
-          <div class="form-status" id="formStatus">
-            {{ formStatus }}
-          </div>
         </div>
 
-        <!-- Keep hidden redirects (unchanged, though not used by TS) -->
-        <input type="hidden" id="redirectSuccess" value="payment-success.html" />
-        <input type="hidden" id="redirectError" value="payment-error.html" />
-      </form>
-    </section>
+        <label class="checkbox-label">
+          <input type="checkbox" id="consentTerms" name="consentTerms" [(ngModel)]="consentTerms"
+            [disabled]="submitting" />
+          <span>I accept the Terms &amp; Conditions</span>
+        </label>
+      </div>
 
-    <!-- SUCCESS MESSAGE -->
-    <section class="card success-card" id="successSection" [class.hidden]="!successVisible">
-      <h2 class="card-title">Registration Submitted</h2>
-      <p>
-        Thank you for registering for APSC 2026. You will receive a confirmation
-        email once your registration has been processed.
-      </p>
-      <p id="successDetails">
-        {{ successDetails }}
-      </p>
-    </section>
-  </main>
-</div>
+      <div class="cancellation-block">
+        <button type="button" class="link-button" (click)="openModal('cancellation')" [disabled]="submitting">
+          View Cancellation Policy
+        </button>
+      </div>
+
+      <div class="error-message" data-error-for="consent">
+        {{ errorMessages['consent'] }}
+      </div>
+
+      <hr class="section-divider" />
+
+      <!-- SUBMIT -->
+      <div class="form-actions">
+        <button type="submit" class="primary-button" [disabled]="submitting">
+          {{ submitting ? 'Submitting…' : 'Submit Registration' }}
+        </button>
+
+        <div class="form-status" id="formStatus">
+          {{ formStatus }}
+        </div>
+      </div>
+
+      <input type="hidden" id="redirectSuccess" value="payment-success.html" />
+      <input type="hidden" id="redirectError" value="payment-error.html" />
+    </form>
+  </section>
+
+  <!-- SUCCESS MESSAGE -->
+  <section class="card success-card" id="successSection" [class.hidden]="!successVisible">
+    <h2 class="card-title">Registration Submitted</h2>
+    <p>
+      Thank you for registering for APSC 2026. You will receive a confirmation
+      email once your registration has been processed.
+    </p>
+    <p id="successDetails">
+      {{ successDetails }}
+    </p>
+  </section>
+</app-page-shell>
+<!-- </main>
+</div> -->
 
 <!-- MODALS (Angular-controlled visibility) -->
 
 <!-- Data Use Modal -->
 <div class="modal-overlay" id="dataUseModal" [class.hidden]="!showDataUseModal"
   (click)="onOverlayClick($event, 'dataUse')">
-  <div class="modal">
+  <div class="modal" (click)="$event.stopPropagation()">
     <div class="modal-header">
       <h3>Privacy &amp; Data Use Policy</h3>
-      <button class="icon-button" (click)="closeModal('dataUse')">
+      <button class="icon-button" (click)="closeModal('dataUse')" [disabled]="submitting">
         &times;
       </button>
     </div>
@@ -313,7 +332,7 @@
       </p>
     </div>
     <div class="modal-footer">
-      <button class="secondary-button" (click)="closeModal('dataUse')">
+      <button class="secondary-button" (click)="closeModal('dataUse')" [disabled]="submitting">
         Close
       </button>
     </div>
@@ -322,10 +341,10 @@
 
 <!-- Terms Modal -->
 <div class="modal-overlay" id="termsModal" [class.hidden]="!showTermsModal" (click)="onOverlayClick($event, 'terms')">
-  <div class="modal">
+  <div class="modal" (click)="$event.stopPropagation()">
     <div class="modal-header">
       <h3>Terms &amp; Conditions</h3>
-      <button class="icon-button" (click)="closeModal('terms')">
+      <button class="icon-button" (click)="closeModal('terms')" [disabled]="submitting">
         &times;
       </button>
     </div>
@@ -341,7 +360,7 @@
       </p>
     </div>
     <div class="modal-footer">
-      <button class="secondary-button" (click)="closeModal('terms')">
+      <button class="secondary-button" (click)="closeModal('terms')" [disabled]="submitting">
         Close
       </button>
     </div>
@@ -351,10 +370,10 @@
 <!-- Cancellation Modal -->
 <div class="modal-overlay" id="cancellationModal" [class.hidden]="!showCancellationModal"
   (click)="onOverlayClick($event, 'cancellation')">
-  <div class="modal">
+  <div class="modal" (click)="$event.stopPropagation()">
     <div class="modal-header">
       <h3>Cancellation Policy</h3>
-      <button class="icon-button" (click)="closeModal('cancellation')">
+      <button class="icon-button" (click)="closeModal('cancellation')" [disabled]="submitting">
         &times;
       </button>
     </div>
@@ -365,10 +384,9 @@
       </p>
       <p>
         Refunds will be made when written notice of cancellation is received by
-        the secretariat at
-        <strong>apsc2026.secretariat@gmail.com</strong> on or before
-        <strong>31 August 2026</strong>. A cancellation charge of 30% of fees
-        paid will be deducted to cover administrative costs. All refund
+        the secretariat at <strong>apsc2026.secretariat@gmail.com</strong> on or
+        before <strong>31 August 2026</strong>. A cancellation charge of 30% of
+        fees paid will be deducted to cover administrative costs. All refund
         procedures will be done by the secretariat via the online registration
         system after the conference.
       </p>
@@ -378,7 +396,7 @@
       </p>
     </div>
     <div class="modal-footer">
-      <button class="secondary-button" (click)="closeModal('cancellation')">
+      <button class="secondary-button" (click)="closeModal('cancellation')" [disabled]="submitting">
         Close
       </button>
     </div>

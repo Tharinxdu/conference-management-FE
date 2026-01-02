@@ -1,0 +1,541 @@
+<!-- UPDATED HTML (template) -->
+<div
+  class="modal-overlay"
+  [class.hidden]="!open"
+  role="dialog"
+  aria-modal="true"
+  aria-label="Abstract submission form"
+  (click)="onOverlayClick()"
+>
+  <div
+    class="modal modal--xl"
+    (click)="$event.stopPropagation()"
+    [attr.aria-busy]="saving ? 'true' : 'false'"
+  >
+    <!-- Header -->
+    <div class="modal-header modal-header--sticky">
+      <div class="modal-title-wrap">
+        <h3 class="modal-title">
+          {{
+            mode === 'create'
+              ? 'Submit New Abstract'
+              : mode === 'edit'
+                ? 'Edit Abstract'
+                : 'View Abstract'
+          }}
+        </h3>
+
+        <p class="modal-subtitle">
+          {{
+            mode === 'create'
+              ? 'Complete all required fields and submit your abstract.'
+              : mode === 'edit'
+                ? 'Update details and attachments, then save.'
+                : 'Review your submitted abstract details.'
+          }}
+        </p>
+
+        <div class="modal-meta-row" *ngIf="loaded as a">
+          <span class="chip accent" *ngIf="a.status">{{ a.status }}</span>
+
+          <span class="chip" *ngIf="a.submittedAt">
+            Submitted: {{ a.submittedAt | date: 'mediumDate' }}
+          </span>
+
+          <span class="chip" *ngIf="a.updatedAt">
+            Updated: {{ a.updatedAt | date: 'mediumDate' }}
+          </span>
+        </div>
+      </div>
+
+      <button
+        class="icon-button"
+        type="button"
+        (click)="onClose()"
+        [disabled]="saving"
+        aria-label="Close"
+        title="Close"
+      >
+        &times;
+      </button>
+    </div>
+
+    <!-- Body -->
+    <div class="modal-body modal-body--scroll">
+      <div class="card" style="padding: 1.25rem">
+        <!-- Error / loading -->
+        <div *ngIf="loading" class="form-status">Loading abstract…</div>
+
+        <div *ngIf="!loading && loadError" class="error-message error-message--block">
+          {{ loadError }}
+        </div>
+
+        <form
+          *ngIf="!loading"
+          [formGroup]="form"
+          novalidate
+          (ngSubmit)="onSubmit()"
+          class="stack-gap"
+        >
+          <!-- A) Presenter Information -->
+          <div>
+            <h4 class="section-heading">A) Presenter Information</h4>
+            <p class="card-subtitle" style="margin: 0 0 0.75rem">
+              Please ensure names are accurate.
+            </p>
+
+            <div class="form-grid">
+              <div class="form-group full-width">
+                <label for="presentingAuthorName">
+                  Presenting Author Name <span class="required">*</span>
+                </label>
+                <input
+                  id="presentingAuthorName"
+                  type="text"
+                  formControlName="presentingAuthorName"
+                  [disabled]="isReadOnly"
+                  autocomplete="name"
+                />
+                <div class="error-message" *ngIf="fieldError('presentingAuthorName') as err">
+                  {{ err }}
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="correspondingAuthorName">
+                  Corresponding Author Name <span class="required">*</span>
+                </label>
+                <input
+                  id="correspondingAuthorName"
+                  type="text"
+                  formControlName="correspondingAuthorName"
+                  [disabled]="isReadOnly"
+                />
+                <div class="error-message" *ngIf="fieldError('correspondingAuthorName') as err">
+                  {{ err }}
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="correspondingAuthorEmail">Corresponding Author Email</label>
+                <input
+                  id="correspondingAuthorEmail"
+                  type="email"
+                  formControlName="correspondingAuthorEmail"
+                  [disabled]="isReadOnly"
+                  autocomplete="email"
+                />
+                <div class="error-message" *ngIf="fieldError('correspondingAuthorEmail') as err">
+                  {{ err }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <hr class="section-divider" />
+
+          <!-- B) Abstract Details -->
+          <div>
+            <h4 class="section-heading">B) Abstract Details</h4>
+
+            <div class="form-grid">
+              <div class="form-group full-width">
+                <label for="abstractTitle">
+                  Title of Abstract <span class="required">*</span>
+                </label>
+                <input
+                  id="abstractTitle"
+                  type="text"
+                  formControlName="abstractTitle"
+                  [disabled]="isReadOnly"
+                />
+                <div class="error-message" *ngIf="fieldError('abstractTitle') as err">
+                  {{ err }}
+                </div>
+              </div>
+
+              <!-- ✅ SINGLE-SELECT dropdown (stored as array of 1) -->
+              <div class="form-group full-width">
+                <label for="preferredPresentationType">
+                  Preferred Presentation Type <span class="required">*</span>
+                </label>
+
+                <div class="select-wrap">
+                  <select
+                    id="preferredPresentationType"
+                    #pptSel
+                    [disabled]="isReadOnly"
+                    [value]="selectedPresentation"
+                    (change)="setPresentationSingle(pptSel.value)"
+                    (blur)="form.controls.preferredPresentationTypes.markAsTouched()"
+                    aria-label="Preferred presentation type"
+                  >
+                    <option value="" disabled>Select one…</option>
+                    <option *ngFor="let p of presentationOptions" [value]="p">
+                      {{ p }}
+                    </option>
+                  </select>
+                  <span class="select-arrow" aria-hidden="true"></span>
+                </div>
+
+                <div class="hint-text">
+                  Choose one option (stored as a single-item array for backend compatibility).
+                </div>
+
+                <div class="error-message" *ngIf="fieldError('preferredPresentationTypes') as err">
+                  {{ err }}
+                </div>
+              </div>
+
+              <!-- ✅ SINGLE-SELECT dropdown (stored as array of 1) -->
+              <div class="form-group full-width">
+                <label for="scientificCategory">
+                  Scientific Categories <span class="required">*</span>
+                </label>
+
+                <div class="select-wrap">
+                  <select
+                    id="scientificCategory"
+                    #catSel
+                    [disabled]="isReadOnly"
+                    [value]="selectedScientificCategory"
+                    (change)="setCategorySingle(catSel.value)"
+                    (blur)="form.controls.scientificCategories.markAsTouched()"
+                    aria-label="Scientific category"
+                  >
+                    <option value="" disabled>Select one…</option>
+                    <option *ngFor="let c of scientificCategoryOptions" [value]="c">
+                      {{ scientificCategoryLabel(c) }}
+                    </option>
+                  </select>
+                  <span class="select-arrow" aria-hidden="true"></span>
+                </div>
+
+                <div class="error-message" *ngIf="fieldError('scientificCategories') as err">
+                  {{ err }}
+                </div>
+
+                <div
+                  class="form-group full-width"
+                  *ngIf="hasCategory('OTHER')"
+                  style="margin-top: 0.75rem"
+                >
+                  <label for="otherCategoryText">
+                    If "Other", please specify <span class="required">*</span>
+                  </label>
+                  <input
+                    id="otherCategoryText"
+                    type="text"
+                    formControlName="otherCategoryText"
+                    [disabled]="isReadOnly"
+                  />
+                  <div class="error-message" *ngIf="fieldError('otherCategoryText') as err">
+                    {{ err }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <hr class="section-divider" />
+
+          <!-- C) Abstract Content -->
+          <div>
+            <h4 class="section-heading">C) Abstract Content</h4>
+
+            <div class="form-group full-width">
+              <div class="word-count-row">
+                <label for="abstractText">
+                  Abstract Text <span class="required">*</span>
+                </label>
+                <div class="word-count" [class.over]="abstractWordCount > 300">
+                  {{ abstractWordCount }}/300 words
+                </div>
+              </div>
+
+              <textarea
+                id="abstractText"
+                formControlName="abstractText"
+                [disabled]="isReadOnly"
+                rows="8"
+              ></textarea>
+
+              <div class="error-message" *ngIf="abstractTextError() as err">
+                {{ err }}
+              </div>
+            </div>
+
+            <div class="form-group full-width">
+              <label for="keywordsInput">
+                Keywords <span class="required">*</span>
+                <span class="help-text"> (1–5, separated by commas or new lines)</span>
+              </label>
+
+              <div class="keywords-box">
+                <textarea
+                  id="keywordsInput"
+                  formControlName="keywordsInput"
+                  [disabled]="isReadOnly"
+                  rows="3"
+                  placeholder="e.g., stroke prevention, neuroimaging"
+                  (blur)="syncKeywordsFromInput()"
+                ></textarea>
+
+                <div class="chip-row" *ngIf="keywords().length > 0">
+                  <span
+                    class="chip accent"
+                    *ngFor="let k of keywords()"
+                    [class.chip--button]="!isReadOnly"
+                    [title]="isReadOnly ? k : 'Click to remove'"
+                    (click)="!isReadOnly && removeKeyword(k)"
+                  >
+                    {{ k }}
+                  </span>
+
+                  <span class="chip">{{ keywords().length }}/5</span>
+                </div>
+
+                <div class="error-message" *ngIf="fieldError('keywords') as err">
+                  {{ err }}
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group full-width">
+              <label for="coAuthorsRaw">
+                Co-authors
+                <div class="help-text">
+                  One entry per line: Full Name – Institution – Country – Email
+                </div>
+              </label>
+
+              <textarea
+                id="coAuthorsRaw"
+                formControlName="coAuthorsRaw"
+                [disabled]="isReadOnly"
+                rows="5"
+              ></textarea>
+
+              <div class="error-message" *ngIf="fieldError('coAuthorsRaw') as err">
+                {{ err }}
+              </div>
+            </div>
+          </div>
+
+          <!-- D) Declarations (ONLY create mode) -->
+          <ng-container *ngIf="mode === 'create'">
+            <hr class="section-divider" />
+
+            <div>
+              <h4 class="section-heading">D) Declarations</h4>
+
+              <div class="consent-item" [class.hidden]="mode !== 'create'">
+                <div class="consent-text">
+                  <p>
+                    I confirm that this abstract represents original work and has not been published or
+                    presented elsewhere.
+                  </p>
+                </div>
+
+                <label class="checkbox-label">
+                  <input
+                    type="checkbox"
+                    formControlName="decl_originalWork"
+                    [disabled]="isReadOnly"
+                  />
+                  <span>I agree</span>
+                </label>
+
+                <div class="error-message" *ngIf="declError('decl_originalWork') as err">
+                  {{ err }}
+                </div>
+              </div>
+
+              <div class="consent-item" [class.hidden]="mode !== 'create'">
+                <div class="consent-text">
+                  <p>All authors have approved the submission and are aware of its content.</p>
+                </div>
+
+                <label class="checkbox-label">
+                  <input
+                    type="checkbox"
+                    formControlName="decl_authorsApproved"
+                    [disabled]="isReadOnly"
+                  />
+                  <span>I agree</span>
+                </label>
+
+                <div class="error-message" *ngIf="declError('decl_authorsApproved') as err">
+                  {{ err }}
+                </div>
+              </div>
+
+              <div class="consent-item" [class.hidden]="mode !== 'create'">
+                <div class="consent-text">
+                  <p>
+                    I agree that the submitted abstract may be included in the APSC 2026 proceedings or
+                    website if accepted.
+                  </p>
+                </div>
+
+                <label class="checkbox-label">
+                  <input
+                    type="checkbox"
+                    formControlName="decl_agreeProceedings"
+                    [disabled]="isReadOnly"
+                  />
+                  <span>I agree</span>
+                </label>
+
+                <div class="error-message" *ngIf="declError('decl_agreeProceedings') as err">
+                  {{ err }}
+                </div>
+              </div>
+            </div>
+          </ng-container>
+
+          <hr class="section-divider" />
+
+          <!-- E) Attachments -->
+          <div class="attachments-box">
+            <h4 class="section-heading">E) Attachments</h4>
+
+            <div class="inline-note">
+              Optional. Allowed: PDF/DOC/DOCX. Max 5 files total per abstract.
+            </div>
+
+            <div *ngIf="existingAttachments.length > 0" class="stack-gap">
+              <div class="chip-row">
+                <ng-container *ngFor="let a of existingAttachments">
+                  <span
+                    *ngIf="mode === 'view' || mode === 'create'"
+                    class="chip chip--button"
+                    (click)="openAttachment(a)"
+                    title="Open attachment"
+                  >
+                    {{ a.originalName }}
+                  </span>
+
+                  <span
+                    *ngIf="mode === 'edit'"
+                    class="chip chip--removable"
+                    [class.chip--removed]="isMarkedRemoved(a)"
+                    title="Open attachment"
+                  >
+                    <span
+                      class="chip--button"
+                      (click)="openAttachment(a)"
+                      style="display: inline-flex"
+                    >
+                      {{ a.originalName }}
+                    </span>
+
+                    <button
+                      class="chip__x"
+                      type="button"
+                      [attr.aria-label]="
+                        isMarkedRemoved(a)
+                          ? 'Undo remove attachment'
+                          : 'Remove attachment'
+                      "
+                      [title]="isMarkedRemoved(a) ? 'Undo' : 'Remove'"
+                      (click)="toggleRemoveAttachment(a); $event.stopPropagation()"
+                      [disabled]="saving"
+                    >
+                      {{ isMarkedRemoved(a) ? '↺' : '×' }}
+                    </button>
+                  </span>
+                </ng-container>
+              </div>
+
+              <div class="error-message" *ngIf="removeAttachmentIds.size > 0 && mode === 'edit'">
+                {{ removeAttachmentIds.size }} attachment(s) will be removed on save.
+              </div>
+            </div>
+
+            <div class="attachments-actions" *ngIf="mode !== 'view'">
+              <div class="form-group full-width" style="margin: 0">
+                <label for="fileInput">Add files</label>
+                <input
+                  id="fileInput"
+                  type="file"
+                  multiple
+                  [disabled]="saving"
+                  accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  (change)="onFilesSelected($event)"
+                />
+                <div class="error-message" *ngIf="filesError">
+                  {{ filesError }}
+                </div>
+              </div>
+            </div>
+
+            <ul class="file-list" *ngIf="newFiles.length > 0">
+              <li *ngFor="let f of newFiles; let i = index">
+                {{ f.name }} ({{ prettyBytes(f.size) }})
+                <button
+                  type="button"
+                  class="link-button"
+                  (click)="removeNewFile(i)"
+                  [disabled]="saving"
+                  style="margin-left: 0.5rem"
+                >
+                  remove
+                </button>
+              </li>
+            </ul>
+          </div>
+
+          <div class="form-status" style="margin-top: 0.75rem">
+            {{ statusLine }}
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="modal-footer modal-footer--sticky">
+      <div class="form-actions-row" style="margin-top: 0">
+        <button
+          *ngIf="mode === 'create'"
+          type="button"
+          class="primary-button"
+          (click)="onSubmit()"
+          [disabled]="saving || loading"
+        >
+          {{ saving ? 'Submitting…' : 'Submit Abstract' }}
+        </button>
+
+        <button
+          *ngIf="mode === 'edit'"
+          type="button"
+          class="primary-button"
+          (click)="onSubmit()"
+          [disabled]="saving || loading"
+        >
+          {{ saving ? 'Saving…' : 'Save Changes' }}
+        </button>
+
+        <button
+          *ngIf="mode === 'view'"
+          type="button"
+          class="secondary-button"
+          (click)="onClose()"
+          [disabled]="saving"
+        >
+          Close
+        </button>
+
+        <button
+          *ngIf="mode !== 'view'"
+          type="button"
+          class="secondary-button"
+          (click)="onCancel()"
+          [disabled]="saving"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

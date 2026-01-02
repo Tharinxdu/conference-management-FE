@@ -1,0 +1,17 @@
+<div class="page-shell">
+  <header class="page-header">
+    <div>
+      <h1>{{ title }}</h1>
+      <p *ngIf="subtitle">{{ subtitle }}</p>
+    </div>
+
+    <!-- Optional right-side content: badges, logout button, etc. -->
+    <div class="header-right">
+      <ng-content select="[headerRight]"></ng-content>
+    </div>
+  </header>
+
+  <main class="page-main">
+    <ng-content></ng-content>
+  </main>
+</div>

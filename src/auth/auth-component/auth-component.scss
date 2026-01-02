@@ -1,0 +1,117 @@
+:host {
+  display: block;
+}
+
+/* Auth wrapper */
+.auth-wrapper {
+  max-width: 520px;
+  margin-inline: auto;
+}
+
+/* Tabs */
+.auth-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.2rem;
+}
+
+.tab-button {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  background: rgba(15, 23, 42, 0.8);
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  cursor: pointer;
+
+  &.active {
+    background: radial-gradient(
+      circle at top left,
+      #22d3ee 0,
+      #0ea5e9 40%,
+      #0284c7 100%
+    );
+    color: #020617;
+    border-color: rgba(56, 189, 248, 0.7);
+    font-weight: 600;
+  }
+}
+
+/* Forms */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem 1.5rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+
+  &.full-width {
+    grid-column: 1 / -1;
+  }
+}
+
+label {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.required {
+  color: var(--color-danger);
+}
+
+input[type='email'],
+input[type='password'] {
+  background: rgba(15, 23, 42, 0.9);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  padding: 0.6rem 0.75rem;
+  font-size: 0.9rem;
+  color: var(--color-text);
+  outline: none;
+}
+
+input[type='email']:focus,
+input[type='password']:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.4);
+}
+
+/* Status + errors */
+.form-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.form-status {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.error-message {
+  font-size: 0.8rem;
+  color: var(--color-danger);
+  min-height: 0.9em;
+}
+
+/* Modal overlay click UX (optional; doesn’t change layout) */
+.modal-overlay {
+  cursor: pointer;
+}
+
+.modal {
+  cursor: default;
+}
+
+/* Responsive (auth page only) */
+@media (max-width: 720px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}

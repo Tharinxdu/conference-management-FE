@@ -1,0 +1,350 @@
+<app-page-shell [title]="'Abstract Dashboard'" [subtitle]="'Manage submitted abstracts'">
+  <!-- Header right actions -->
+  <div headerRight class="header-actions">
+    <button
+      class="secondary-button"
+      type="button"
+      (click)="openProfileEdit()"
+      [disabled]="profileChecking || savingBusy || profileGateOpen"
+      aria-label="Open profile"
+      title="Profile"
+    >
+      👤
+    </button>
+
+    <button
+      class="secondary-button"
+      type="button"
+      (click)="logout()"
+      [disabled]="profileChecking || savingBusy"
+    >
+      Logout
+    </button>
+  </div>
+
+  <div class="toolbar">
+    <div class="toolbar__left">
+      <div class="toolbar__title">Your Abstracts</div>
+      <div class="toolbar__hint" *ngIf="!loading && !error && abstracts.length > 0">
+        You have <span class="count">{{ abstracts.length }}</span> abstract{{ abstracts.length === 1 ? '' : 's' }}.
+      </div>
+    </div>
+
+    <div class="toolbar__right">
+      <button
+        class="secondary-button"
+        type="button"
+        (click)="reload()"
+        [disabled]="loading || savingBusy || profileChecking || profileGateOpen"
+      >
+        Refresh
+      </button>
+
+      <button
+        class="primary-button"
+        type="button"
+        (click)="openCreate()"
+        [disabled]="loading || savingBusy || profileChecking || profileGateOpen || !hasProfile"
+        [title]="!hasProfile ? 'Complete your profile first' : ''"
+      >
+        + New Abstract
+      </button>
+    </div>
+  </div>
+
+  <div class="error-banner" *ngIf="error">
+    <div class="error-banner__content">
+      <div class="error-banner__title">Couldn’t load your abstracts</div>
+      <div class="error-banner__msg">{{ error }}</div>
+    </div>
+    <button class="secondary-button" type="button" (click)="reload()" [disabled]="loading">
+      Retry
+    </button>
+  </div>
+
+  <!-- Loading skeleton -->
+  <div class="skeleton" *ngIf="loading">
+    <div class="skeleton__row" *ngFor="let _ of skeletonRows; let i = index">
+      <div class="skeleton__left">
+        <div class="sk sk-title"></div>
+        <div class="sk sk-sub"></div>
+      </div>
+      <div class="skeleton__right">
+        <div class="sk sk-chip"></div>
+        <div class="sk sk-btn"></div>
+        <div class="sk sk-btn"></div>
+        <div class="sk sk-btn"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Empty state -->
+  <div class="empty" *ngIf="!loading && !error && abstracts.length === 0">
+    <div class="empty__icon" aria-hidden="true">📝</div>
+    <div class="empty__title">No abstracts yet</div>
+    <div class="empty__subtitle">
+      Create your first abstract submission and manage updates here.
+    </div>
+    <button
+      class="primary-button"
+      type="button"
+      (click)="openCreate()"
+      [disabled]="profileChecking || profileGateOpen || !hasProfile"
+      [title]="!hasProfile ? 'Complete your profile first' : ''"
+    >
+      Create Abstract
+    </button>
+  </div>
+
+  <!-- List -->
+  <div class="list" *ngIf="!loading && !error && abstracts.length > 0">
+    <div
+      class="card-row"
+      *ngFor="let a of abstracts; trackBy: trackById"
+      [class.card-row--busy]="isDeleting(a)"
+    >
+      <div class="card-row__main">
+        <div class="title-line">
+          <div class="title" [title]="a.abstractTitle || 'Untitled Abstract'">
+            {{ a.abstractTitle || 'Untitled Abstract' }}
+          </div>
+
+          <span class="chip" [ngClass]="statusClass(a)">
+            {{ statusLabel(a) }}
+          </span>
+
+          <!-- Optional tiny lock hint (no CSS required, but looks nice if you style it) -->
+          <span
+            *ngIf="isLocked(a)"
+            class="chip chip--lock"
+            title="This abstract is locked and can only be viewed."
+            aria-label="Locked"
+          >
+            🔒 Locked
+          </span>
+        </div>
+
+        <div class="meta">
+          <span class="meta__item">
+            <span class="meta__label">{{ dateLabel(a) }}:</span>
+            <span class="meta__value">{{ formatDate(dateValue(a)) }}</span>
+          </span>
+
+          <span class="meta__dot" aria-hidden="true">•</span>
+
+          <span class="meta__item" *ngIf="a.presentingAuthorName">
+            <span class="meta__label">Presenter:</span>
+            <span class="meta__value">{{ a.presentingAuthorName }}</span>
+          </span>
+
+          <span class="meta__dot" aria-hidden="true" *ngIf="isLocked(a)">•</span>
+
+          <span class="meta__item" *ngIf="isLocked(a)">
+            <span class="meta__label">Note:</span>
+            <span class="meta__value">Edits disabled ({{ statusLabel(a) }}).</span>
+          </span>
+        </div>
+      </div>
+
+      <div class="card-row__actions">
+        <button
+          class="secondary-button"
+          type="button"
+          (click)="openView(a)"
+          [disabled]="savingBusy || isDeleting(a)"
+        >
+          View
+        </button>
+
+        <button
+          class="secondary-button"
+          type="button"
+          (click)="openEdit(a)"
+          [disabled]="savingBusy || isDeleting(a) || isLocked(a)"
+          [title]="isLocked(a) ? 'This abstract is locked. You can only view it.' : 'Edit'"
+        >
+          Edit
+        </button>
+
+        <button
+          class="danger-button"
+          type="button"
+          (click)="askDelete(a)"
+          [disabled]="savingBusy || isDeleting(a) || isLocked(a)"
+          [title]="isLocked(a) ? 'This abstract is locked. You cannot delete it.' : 'Delete'"
+        >
+          <span *ngIf="!isDeleting(a)">Delete</span>
+          <span *ngIf="isDeleting(a)">Deleting…</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete confirm dialog -->
+  <div class="confirm-overlay" *ngIf="confirmOpen" role="dialog" aria-modal="true" aria-label="Confirm delete">
+    <div class="confirm-modal">
+      <div class="confirm-modal__header">
+        <div class="confirm-modal__title">Delete abstract?</div>
+        <button class="icon-x" type="button" (click)="closeConfirm()" [disabled]="confirmBusy" aria-label="Close">
+          ×
+        </button>
+      </div>
+
+      <div class="confirm-modal__body">
+        <p>
+          This will permanently delete:
+          <strong>{{ confirmTarget?.abstractTitle || 'Untitled Abstract' }}</strong>
+        </p>
+        <p class="muted">You can’t undo this action.</p>
+
+        <div class="error-banner error-banner--inline" *ngIf="confirmError">
+          <div class="error-banner__msg">{{ confirmError }}</div>
+        </div>
+      </div>
+
+      <div class="confirm-modal__footer">
+        <button class="secondary-button" type="button" (click)="closeConfirm()" [disabled]="confirmBusy">
+          Cancel
+        </button>
+        <button class="danger-button" type="button" (click)="confirmDelete()" [disabled]="confirmBusy">
+          {{ confirmBusy ? 'Deleting…' : 'Delete' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Profile gate / edit modal -->
+  <div
+    class="confirm-overlay"
+    *ngIf="profileGateOpen"
+    role="dialog"
+    aria-modal="true"
+    [attr.aria-label]="profileMode === 'create' ? 'Complete your profile' : 'Edit profile'"
+  >
+    <!-- (UNCHANGED profile modal content) -->
+    <div class="confirm-modal" style="max-width: 720px;">
+      <div class="confirm-modal__header">
+        <div class="confirm-modal__title">
+          {{ profileMode === 'create' ? 'Complete your profile' : 'Edit profile' }}
+        </div>
+
+        <button
+          *ngIf="profileMode === 'edit'"
+          class="icon-x"
+          type="button"
+          (click)="closeProfile()"
+          [disabled]="profileSubmitting"
+          aria-label="Close"
+        >
+          ×
+        </button>
+      </div>
+
+      <div class="confirm-modal__body">
+        <p class="muted" *ngIf="profileMode === 'create'">
+          You must complete this once before submitting abstracts.
+        </p>
+
+        <div class="error-banner error-banner--inline" *ngIf="profileError">
+          <div class="error-banner__msg">{{ profileError }}</div>
+        </div>
+
+        <form [formGroup]="profileForm" (ngSubmit)="submitProfile()">
+          <div class="grid" style="display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;">
+            <label style="display:block;">
+              <div style="font-size:12px; opacity:.8; margin-bottom:6px;">Title *</div>
+              <select formControlName="title" [disabled]="profileMode === 'edit' || profileSubmitting" style="width:100%;">
+                <option value="">Select…</option>
+                <option value="Dr">Dr</option>
+                <option value="Prof">Prof</option>
+                <option value="Mr">Mr</option>
+                <option value="Ms">Ms</option>
+                <option value="Other">Other</option>
+              </select>
+            </label>
+
+            <label style="display:block;">
+              <div style="font-size:12px; opacity:.8; margin-bottom:6px;">Country *</div>
+              <input
+                type="text"
+                formControlName="country"
+                [disabled]="profileMode === 'edit' || profileSubmitting"
+                placeholder="Sri Lanka"
+                style="width:100%;"
+              />
+            </label>
+
+            <label style="display:block;">
+              <div style="font-size:12px; opacity:.8; margin-bottom:6px;">First name *</div>
+              <input
+                type="text"
+                formControlName="firstName"
+                [disabled]="profileMode === 'edit' || profileSubmitting"
+                placeholder="First name"
+                style="width:100%;"
+              />
+            </label>
+
+            <label style="display:block;">
+              <div style="font-size:12px; opacity:.8; margin-bottom:6px;">Last name *</div>
+              <input
+                type="text"
+                formControlName="lastName"
+                [disabled]="profileMode === 'edit' || profileSubmitting"
+                placeholder="Last name"
+                style="width:100%;"
+              />
+            </label>
+
+            <label style="display:block;">
+              <div style="font-size:12px; opacity:.8; margin-bottom:6px;">Affiliation</div>
+              <input type="text" formControlName="affiliation" [disabled]="profileSubmitting" style="width:100%;" />
+            </label>
+
+            <label style="display:block;">
+              <div style="font-size:12px; opacity:.8; margin-bottom:6px;">Department</div>
+              <input type="text" formControlName="department" [disabled]="profileSubmitting" style="width:100%;" />
+            </label>
+
+            <label style="display:block;">
+              <div style="font-size:12px; opacity:.8; margin-bottom:6px;">City</div>
+              <input type="text" formControlName="city" [disabled]="profileSubmitting" style="width:100%;" />
+            </label>
+
+            <label style="display:block;">
+              <div style="font-size:12px; opacity:.8; margin-bottom:6px;">Designation</div>
+              <input type="text" formControlName="designation" [disabled]="profileSubmitting" style="width:100%;" />
+            </label>
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:16px;">
+            <button
+              *ngIf="profileMode === 'edit'"
+              class="secondary-button"
+              type="button"
+              (click)="closeProfile()"
+              [disabled]="profileSubmitting"
+            >
+              Cancel
+            </button>
+
+            <button class="primary-button" type="submit" [disabled]="profileSubmitting || profileForm.invalid">
+              {{ profileSubmitting ? (profileMode === 'create' ? 'Saving…' : 'Updating…') : (profileMode === 'create' ? 'Save profile' : 'Update profile') }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Abstract modal -->
+  <app-abstract-form-modal
+    *ngIf="modalOpen"
+    [open]="modalOpen"
+    [mode]="modalMode"
+    [abstractId]="modalAbstractId"
+    [initialData]="modalInitialData"
+    (closed)="closeModal()"
+    (saved)="onModalSaved($event)"
+  />
+</app-page-shell>

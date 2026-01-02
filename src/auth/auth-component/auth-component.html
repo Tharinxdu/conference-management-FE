@@ -1,0 +1,146 @@
+<!-- <div class="page-shell">
+  <header class="page-header">
+    <div>
+      <h1>APSC 2026 – Abstract Submission Portal</h1>
+      <p>Login or create an account to submit and manage your abstracts.</p>
+    </div>
+  </header>
+
+  <main class="page-main"> -->
+
+<app-page-shell title="APSC 2026 – Abstract Submission Portal"
+  subtitle="Login or create an account to submit and manage your abstracts.">
+  <section class="card auth-wrapper">
+    <div class="auth-tabs">
+      <button class="tab-button" [class.active]="activeTab() === 'loginTab'" data-tab="loginTab" type="button"
+        (click)="setTab('loginTab')">
+        Login
+      </button>
+      <button class="tab-button" [class.active]="activeTab() === 'registerTab'" data-tab="registerTab" type="button"
+        (click)="setTab('registerTab')">
+        Create Account
+      </button>
+    </div>
+
+    <div id="loginTab" class="auth-tab" [class.hidden]="activeTab() !== 'loginTab'">
+      <h2 class="card-title">Login</h2>
+      <p class="card-subtitle">Enter your email and password.</p>
+
+      <form id="loginForm" novalidate [formGroup]="loginForm" (ngSubmit)="onLoginSubmit()">
+        <div class="form-grid">
+          <div class="form-group full-width">
+            <label for="loginEmail">Email <span class="required">*</span></label>
+            <input type="email" id="loginEmail" name="email" required formControlName="email" />
+            <div class="error-message" data-error-for="loginEmail">
+              {{ errorFor(loginForm, 'email', 'login') }}
+            </div>
+          </div>
+
+          <div class="form-group full-width">
+            <label for="loginPassword">Password <span class="required">*</span></label>
+            <input type="password" id="loginPassword" name="password" required formControlName="password" />
+            <div class="error-message" data-error-for="loginPassword">
+              {{ errorFor(loginForm, 'password', 'login') }}
+            </div>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="primary-button" [disabled]="loginLoading()">
+            {{ loginLoading() ? 'Logging in…' : 'Login' }}
+          </button>
+
+          <button type="button" class="link-button" id="forgotPasswordButton" (click)="openForgotModal()"
+            [disabled]="loginLoading()">
+            Forgot password?
+          </button>
+
+          <div class="form-status" id="loginStatus">{{ loginStatus() }}</div>
+        </div>
+      </form>
+    </div>
+
+    <div id="registerTab" class="auth-tab" [class.hidden]="activeTab() !== 'registerTab'">
+      <h2 class="card-title">Create Account</h2>
+      <p class="card-subtitle">
+        Use a valid email address. You will use this account for all abstract submissions.
+      </p>
+
+      <form id="registerForm" novalidate [formGroup]="registerForm" (ngSubmit)="onRegisterSubmit()">
+        <div class="form-grid">
+          <div class="form-group full-width">
+            <label for="registerEmail">Email <span class="required">*</span></label>
+            <input type="email" id="registerEmail" name="email" required formControlName="email" />
+            <div class="error-message" data-error-for="registerEmail">
+              {{ errorFor(registerForm, 'email', 'register') }}
+            </div>
+          </div>
+
+          <div class="form-group full-width">
+            <label for="registerPassword">Password <span class="required">*</span></label>
+            <input type="password" id="registerPassword" name="password" required formControlName="password" />
+            <small class="help-text">Minimum 8 characters.</small>
+            <div class="error-message" data-error-for="registerPassword">
+              {{ errorFor(registerForm, 'password', 'register') }}
+            </div>
+          </div>
+
+          <div class="form-group full-width">
+            <label for="registerConfirmPassword">
+              Confirm Password <span class="required">*</span>
+            </label>
+            <input type="password" id="registerConfirmPassword" name="confirmPassword" required
+              formControlName="confirmPassword" />
+            <div class="error-message" data-error-for="registerConfirmPassword">
+              {{ errorFor(registerForm, 'confirmPassword', 'register') }}
+            </div>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="primary-button" [disabled]="registerLoading()">
+            {{ registerLoading() ? 'Creating…' : 'Create Account' }}
+          </button>
+          <div class="form-status" id="registerStatus">{{ registerStatus() }}</div>
+        </div>
+      </form>
+    </div>
+  </section>
+</app-page-shell>
+<!-- </main>
+</div> -->
+
+<!-- Forgot Password Modal -->
+<div class="modal-overlay" id="forgotPasswordModal" [class.hidden]="!showForgotModal()" (click)="closeForgotModal()">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Reset Password</h3>
+      <button class="icon-button" id="closeForgotModal" type="button" (click)="closeForgotModal()">
+        &times;
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <p class="help-text">
+        Enter your email and we will send you a link to reset your password.
+      </p>
+
+      <form id="forgotPasswordForm" [formGroup]="forgotForm" (ngSubmit)="onForgotSubmit()">
+        <div class="form-group full-width">
+          <label for="forgotEmail">Email</label>
+          <input type="email" id="forgotEmail" required formControlName="email" />
+          <div class="error-message" data-error-for="forgotEmail">
+            {{ errorFor(forgotForm, 'email', 'forgot') }}
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="primary-button" [disabled]="forgotLoading()">
+            {{ forgotLoading() ? 'Sending…' : 'Send reset link' }}
+          </button>
+          <div class="form-status" id="forgotStatus">{{ forgotStatus() }}</div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

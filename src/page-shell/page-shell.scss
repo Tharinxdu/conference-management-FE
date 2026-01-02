@@ -1,0 +1,10 @@
+:host {
+  display: block;
+}
+
+/* Keeps badge + logout nicely aligned when both are present */
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
