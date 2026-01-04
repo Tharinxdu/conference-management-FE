@@ -1,0 +1,259 @@
+<!-- FILE: src/app/admin/admin-abstract/admin-abstract.html -->
+<ng-container *ngIf="vm$ | async as vm">
+  <app-page-shell [title]="'Abstract Management'" [subtitle]="'Manage all submitted abstracts'">
+    <div headerRight class="header-actions">
+      <button class="secondary-button" type="button" (click)="refresh()" aria-label="Refresh abstracts">
+        Refresh
+      </button>
+
+      <div class="export-split" role="group" aria-label="Export actions">
+        <button class="secondary-button" type="button" [disabled]="(exportBusy$ | async) === true"
+          (click)="exportAll(vm)" aria-label="Export all abstracts (filtered) to Excel">
+          Export (Excel)
+        </button>
+
+        <!-- <button class="secondary-button" type="button" [disabled]="(exportBusy$ | async) === true"
+          (click)="exportAllFiltered(vm)" aria-label="Export all filtered abstracts to CSV">
+          Export All (Filtered)
+        </button> -->
+      </div>
+    </div>
+
+    <div class="content-wrap">
+      <div class="page">
+        <div class="banner-row" *ngIf="(errorMsg$ | async) as err">
+          <div class="error-banner" role="alert">
+            <div class="error-title">Something went wrong</div>
+            <div class="error-text">{{ err }}</div>
+          </div>
+        </div>
+
+        <div class="banner-row" *ngIf="(infoMsg$ | async) as info">
+          <div class="info-banner" role="status">
+            <div class="info-text">{{ info }}</div>
+          </div>
+        </div>
+
+        <div class="toolbar card">
+          <div class="toolbar-row">
+            <div class="toolbar-left">
+              <label class="sr-only" for="searchInput">Search</label>
+              <div class="search">
+                <span class="search-icon" aria-hidden="true"></span>
+                <input id="searchInput" type="text" [formControl]="form.controls.search"
+                  placeholder="Search title, presenter, corresponding author, or email…"
+                  aria-label="Search abstracts" />
+                <button class="icon-clear" type="button" *ngIf="form.controls.search.value"
+                  (click)="form.controls.search.setValue(''); $event.stopPropagation()" aria-label="Clear search"
+                  title="Clear">
+                  ×
+                </button>
+              </div>
+            </div>
+
+            <div class="toolbar-right">
+              <label class="sr-only" for="statusSelect">Status</label>
+              <select id="statusSelect" class="control-select" [formControl]="form.controls.status"
+                aria-label="Filter by status">
+                <option *ngFor="let s of statusOptions" [ngValue]="s.value">{{ s.label }}</option>
+              </select>
+
+              <button class="secondary-button" type="button" (click)="moreFiltersOpen = !moreFiltersOpen"
+                aria-label="Toggle more filters" [attr.aria-expanded]="moreFiltersOpen">
+                More filters
+              </button>
+
+              <button class="secondary-button" type="button" (click)="clearFilters()" aria-label="Clear filters">
+                Clear
+              </button>
+            </div>
+          </div>
+
+          <div class="more-filters" *ngIf="moreFiltersOpen">
+            <div class="field">
+              <label for="ownerIdInput">Owner ID</label>
+              <input id="ownerIdInput" type="text" [formControl]="form.controls.ownerId"
+                placeholder="Optional: filter by ownerId" aria-label="OwnerId filter" />
+              <div class="hint">Use this for targeted checks. Leave empty for normal review.</div>
+            </div>
+          </div>
+
+          <div class="notice" *ngIf="modalOpen && modalMode === 'edit'">
+            <span class="notice-dot" aria-hidden="true"></span>
+            Editing content will reset status to <strong>Submitted</strong>.
+          </div>
+        </div>
+
+        <div class="table-card card">
+          <div class="table-meta">
+            <div class="meta-left">
+              <div class="meta-title">Abstracts</div>
+              <div class="meta-sub">
+                <ng-container *ngIf="vm.total > 0; else emptyMeta">
+                  Showing <strong>{{ vm.from }}</strong>–<strong>{{ vm.to }}</strong> of <strong>{{ vm.total }}</strong>
+                </ng-container>
+                <ng-template #emptyMeta>No abstracts found for current filters.</ng-template>
+              </div>
+            </div>
+
+            <div class="meta-right">
+              <label class="sr-only" for="pageSizeSelect">Page size</label>
+              <select id="pageSizeSelect" class="control-select control-select--small" [value]="vm.limit"
+                (change)="setPageSize($any($event.target).value)" aria-label="Select page size">
+                <option *ngFor="let s of pageSizeOptions" [value]="s">{{ s }} / page</option>
+              </select>
+
+              <div class="pager" aria-label="Pagination controls">
+                <button class="icon-button" type="button" (click)="goFirst(vm)" [disabled]="vm.page <= 1"
+                  aria-label="First page">«</button>
+                <button class="icon-button" type="button" (click)="goPrev(vm)" [disabled]="vm.page <= 1"
+                  aria-label="Previous page">‹</button>
+                <div class="pager-label" aria-label="Current page">Page <strong>{{ vm.page }}</strong> / {{ vm.pages }}
+                </div>
+                <button class="icon-button" type="button" (click)="goNext(vm)" [disabled]="vm.page >= vm.pages"
+                  aria-label="Next page">›</button>
+                <button class="icon-button" type="button" (click)="goLast(vm)" [disabled]="vm.page >= vm.pages"
+                  aria-label="Last page">»</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="table-wrap" role="region" aria-label="Abstracts table">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th class="sticky-col col-title">Title</th>
+                  <th class="col-owner">Owner Email</th>
+                  <th class="col-status">Status</th>
+                  <th class="col-actions">Actions</th>
+                </tr>
+              </thead>
+
+              <tbody *ngIf="(pageLoading$ | async) === true">
+                <tr *ngFor="let _ of [1,2,3,4,5,6,7,8]">
+                  <td class="sticky-col col-title">
+                    <div class="skeleton s1"></div>
+                  </td>
+                  <td class="col-owner">
+                    <div class="skeleton s2"></div>
+                  </td>
+                  <td class="col-status">
+                    <div class="skeleton s3"></div>
+                  </td>
+                  <td class="col-actions">
+                    <div class="skeleton s3"></div>
+                  </td>
+                </tr>
+              </tbody>
+
+              <tbody *ngIf="(pageLoading$ | async) !== true">
+                <tr class="row" *ngFor="let row of vm.items" (click)="openView(row)"
+                  (keydown)="onRowKeydown($event, row)" tabindex="0" role="button"
+                  [attr.aria-label]="'View abstract ' + (row.abstractTitle || row.__id)">
+                  <td class="sticky-col col-title">
+                    <div class="title">
+                      <div class="t-main truncate">{{ row.abstractTitle || "—" }}</div>
+                      <div class="t-sub mono truncate">{{ row.__id }}</div>
+                    </div>
+                  </td>
+
+                  <td class="col-owner mono">
+                    <span class="muted truncate">{{ row.__ownerEmail || "—" }}</span>
+                  </td>
+
+                  <!-- ✅ FIX: enforce the selected option even if casing/mismatch happens.
+                       If there is no exact match, browser defaults to first option (Submitted). -->
+                  <td class="col-status" (click)="$event.stopPropagation()">
+                    <div class="status-inline">
+                      <div class="status-pill" [class.loading]="isStatusUpdating(row.__id)">
+                        <span class="status-label" [class]="chipClass(effectiveStatus(row))">
+                          {{ formatStatus(effectiveStatus(row)) }}
+                        </span>
+                        <span class="caret" aria-hidden="true">▾</span>
+
+                        <select class="status-native" [disabled]="isStatusUpdating(row.__id)"
+                          (change)="onRowStatusChange(row, $any($event.target).value, $event)"
+                          aria-label="Change status" title="Change status">
+                          <option *ngFor="let s of rowStatusOptions" [value]="s.value"
+                            [selected]="s.value === ('' + effectiveStatus(row)).toLowerCase()">
+                            {{ s.label }}
+                          </option>
+                        </select>
+                      </div>
+
+                      <span class="tiny" *ngIf="isStatusUpdating(row.__id)">Updating…</span>
+                    </div>
+                  </td>
+
+                  <td class="col-actions" (click)="$event.stopPropagation()">
+                    <div class="actions">
+                      <button class="secondary-button" type="button" (click)="openView(row); $event.stopPropagation()"
+                        aria-label="View abstract">
+                        View
+                      </button>
+
+                      <!-- <button class="primary-button" type="button" (click)="openEdit(row); $event.stopPropagation()"
+                        aria-label="Edit abstract">
+                        Edit
+                      </button> -->
+
+                      <button class="danger-button" type="button" [disabled]="isDeleting(row.__id)"
+                        (click)="askDelete(row, $event)" aria-label="Delete abstract">
+                        {{ isDeleting(row.__id) ? "Deleting…" : "Delete" }}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
+                <tr *ngIf="vm.empty">
+                  <td class="empty" colspan="4">
+                    <div class="empty-title">No results</div>
+                    <div class="empty-sub">Try clearing filters or adjusting your search keywords.</div>
+                    <button class="secondary-button" type="button" (click)="clearFilters()" aria-label="Clear filters">
+                      Clear filters
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="table-footer">
+            <div class="footer-left">
+              <span class="muted">Tip:</span> click a row to view. Use the status chip to update status.
+            </div>
+            <div class="footer-right">
+              <span class="muted">Total:</span> {{ vm.total }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <app-abstract-form-modal [open]="modalOpen" [mode]="modalMode" [abstractId]="modalId || undefined"
+        [initialData]="modalInitialData" (closed)="onModalClosed()" (saved)="onModalSaved()"></app-abstract-form-modal>
+
+      <div class="confirm-overlay" *ngIf="confirmOpen" role="dialog" aria-modal="true" aria-label="Confirm delete"
+        (click)="cancelDelete()">
+        <div #confirmDialog class="confirm-modal" (click)="$event.stopPropagation()">
+          <div class="confirm-header">
+            <div class="confirm-title">Delete abstract?</div>
+            <button class="icon-button" type="button" (click)="cancelDelete()" aria-label="Close confirm">×</button>
+          </div>
+
+          <div class="confirm-body">
+            <p>You’re about to delete <strong>{{ confirmTargetTitle }}</strong>. This can’t be undone.</p>
+          </div>
+
+          <div class="confirm-footer">
+            <button #confirmCancelBtn class="secondary-button" type="button" (click)="cancelDelete()"
+              aria-label="Cancel delete">Cancel</button>
+            <button class="danger-button" type="button" (click)="confirmDelete()"
+              [disabled]="confirmTargetId ? isDeleting(confirmTargetId) : false" aria-label="Confirm delete">
+              {{ confirmTargetId && isDeleting(confirmTargetId) ? "Deleting…" : "Delete" }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </app-page-shell>
+</ng-container>

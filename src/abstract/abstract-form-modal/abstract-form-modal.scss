@@ -52,9 +52,9 @@
   -webkit-backdrop-filter: blur(10px);
 }
 
-/* Modal shell: premium glass + inner glow */
+/* Modal shell: premium glass + inner glow (✅ reduced size) */
 .modal {
-  padding: 1rem 1.25rem 1.1rem;
+  padding: 0.85rem 1rem 0.95rem; /* was 1rem 1.25rem 1.1rem */
   border-radius: var(--afm-radius);
   border: 1px solid var(--afm-border-strong);
   box-shadow: var(--afm-shadow);
@@ -70,6 +70,11 @@
     ),
     linear-gradient(180deg, rgba(2, 6, 23, 0.96), rgba(15, 23, 42, 0.92));
   position: relative;
+
+  /* ✅ new default width cap (smaller than before) */
+  width: min(780px, calc(100vw - 1.6rem));
+  max-width: 780px;
+
   overflow: hidden;
 }
 
@@ -83,10 +88,10 @@
   opacity: 1;
 }
 
-/* Wider modal helper */
+/* Wider modal helper (✅ reduced XL size) */
 .modal--xl {
-  max-width: 920px !important;
-  width: min(920px, calc(100vw - 1.25rem));
+  max-width: 820px !important; /* was 920px */
+  width: min(820px, calc(100vw - 1.6rem));
 }
 
 /* Sticky header/footer — translucent and clean */
@@ -97,11 +102,7 @@
 
   padding-top: 0.25rem;
   padding-bottom: 0.8rem;
-  // background: linear-gradient(
-  //   180deg,
-  //   rgba(2, 6, 23, 0.92),
-  //   rgba(2, 6, 23, 0.70)
-  // );
+
   border-bottom: 1px solid rgba(148, 163, 184, 0.16);
 
   backdrop-filter: blur(12px);
@@ -115,20 +116,16 @@
 
   padding-top: 0.9rem;
   padding-bottom: 0.1rem;
-  // background: linear-gradient(
-  //   0deg,
-  //   rgba(2, 6, 23, 0.92),
-  //   rgba(2, 6, 23, 0.70)
-  // );
+
   border-top: 1px solid rgba(148, 163, 184, 0.16);
 
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
 
-/* Body scroll region */
+/* Body scroll region (✅ reduced height) */
 .modal-body--scroll {
-  max-height: 78vh;
+  max-height: 66vh; /* was 78vh */
   overflow-y: auto;
   padding-right: 0.25rem; /* avoid scrollbar overlap */
 
@@ -594,7 +591,7 @@ select {
   @keyframes afm-pop {
     from {
       transform: translateY(6px) scale(0.99);
-      opacity: 0.0;
+      opacity: 0;
     }
     to {
       transform: translateY(0) scale(1);
@@ -603,12 +600,11 @@ select {
   }
 }
 
-
-/* Responsive */
+/* Responsive (✅ reduced mobile size too) */
 @media (max-width: 720px) {
   .modal {
-    padding: 0.95rem 1rem 1.05rem;
-    width: calc(100vw - 0.9rem);
+    padding: 0.85rem 0.9rem 0.95rem;
+    width: calc(100vw - 1.1rem);
   }
 
   .form-grid {
@@ -630,6 +626,6 @@ select {
   }
 
   .modal-body--scroll {
-    max-height: 82vh;
+    max-height: 74vh; /* was 82vh */
   }
 }

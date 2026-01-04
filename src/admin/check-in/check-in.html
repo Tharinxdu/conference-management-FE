@@ -1,0 +1,287 @@
+<!-- FILE: src/admin/check-in/check-in.html -->
+<app-page-shell [title]="'Check-in'" [subtitle]="'Scan QR or enter Registration ID to check in attendees'">
+  <div headerRight class="header-actions">
+    <button class="secondary-button" type="button" (click)="clearAll()" aria-label="Clear">
+      Clear
+    </button>
+
+    <button
+      class="secondary-button"
+      type="button"
+      (click)="toggleCamera()"
+      [disabled]="cameraBusy() || tab() !== 'qr'"
+      aria-label="Toggle camera"
+    >
+      {{ cameraOpen() ? "Stop camera" : "Start camera" }}
+    </button>
+  </div>
+
+  <div class="content-wrap">
+    <div class="page">
+      <div class="banner-row" *ngIf="errorMsg() as err">
+        <div class="error-banner" role="alert">
+          <div class="error-title">Something went wrong</div>
+          <div class="error-text">{{ err }}</div>
+        </div>
+      </div>
+
+      <div class="banner-row" *ngIf="infoMsg() as info">
+        <div class="info-banner" role="status">
+          <div class="info-text">{{ info }}</div>
+        </div>
+      </div>
+
+      <div class="toolbar card">
+        <div class="toolbar-row">
+          <div class="tabs" role="tablist" aria-label="Check-in methods">
+            <button
+              class="tab"
+              type="button"
+              role="tab"
+              [attr.aria-selected]="tab() === 'qr'"
+              [class.active]="tab() === 'qr'"
+              (click)="setTab('qr')"
+            >
+              QR Scan
+            </button>
+            <button
+              class="tab"
+              type="button"
+              role="tab"
+              [attr.aria-selected]="tab() === 'id'"
+              [class.active]="tab() === 'id'"
+              (click)="setTab('id')"
+            >
+              Registration ID
+            </button>
+          </div>
+
+          <div class="toolbar-right">
+            <span class="hint-inline" *ngIf="tab() === 'qr'">
+              Tip: use the back camera on mobile for faster focus.
+            </span>
+            <span class="hint-inline" *ngIf="tab() === 'id'">
+              Tip: USB scanners work too — click the input and scan.
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- QR TAB -->
+      <div class="grid" *ngIf="tab() === 'qr'">
+        <div class="card scanner-card">
+          <div class="card-head">
+            <div>
+              <div class="card-title">QR Scanner</div>
+              <div class="card-subtitle">Start the camera and scan the attendee QR</div>
+            </div>
+
+            <div class="device" *ngIf="devices().length > 1">
+              <label class="sr-only" for="deviceSelect">Camera</label>
+              <select
+                id="deviceSelect"
+                class="control-select control-select--small"
+                [value]="selectedDeviceId()"
+                (change)="onDeviceChange($any($event.target).value)"
+                aria-label="Select camera"
+              >
+                <option *ngFor="let d of devices()" [value]="d.deviceId">{{ d.label }}</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="scanner-surface" [class.off]="!cameraOpen()">
+            <video #videoEl class="video" playsinline muted></video>
+
+            <div class="overlay" *ngIf="!cameraOpen()">
+              <div class="overlay-inner">
+                <div class="overlay-title">Camera is off</div>
+                <div class="overlay-sub">Click “Start camera” to begin scanning.</div>
+              </div>
+            </div>
+
+            <div class="frame" aria-hidden="true"></div>
+            <div class="scan-hint" *ngIf="cameraOpen()">
+              Align the QR inside the frame
+            </div>
+          </div>
+
+          <div class="actions-row">
+            <button
+              class="secondary-button"
+              type="button"
+              (click)="toggleCamera()"
+              [disabled]="cameraBusy()"
+              aria-label="Toggle camera"
+            >
+              {{ cameraOpen() ? "Stop camera" : "Start camera" }}
+            </button>
+
+            <button
+              class="secondary-button"
+              type="button"
+              (click)="previewQr(qrForm.controls.qrText.value)"
+              [disabled]="loading() || !qrForm.valid"
+              aria-label="Preview last scanned QR"
+              title="If you used a hardware scanner or pasted the QR text"
+            >
+              Preview last QR
+            </button>
+          </div>
+        </div>
+
+        <div class="card help-card">
+          <div class="card-title">What happens after scan?</div>
+          <div class="card-subtitle">
+            We first preview the attendee + current check-in state. Then you confirm to mark them as checked in.
+          </div>
+
+          <hr class="section-divider" />
+
+          <ul class="help-list">
+            <li><span class="dot"></span> Only <strong>PAID</strong> registrations can be checked in.</li>
+            <li><span class="dot"></span> If already checked in, you’ll see the timestamp and it stays idempotent.</li>
+            <li><span class="dot"></span> If the QR is revoked/expired, you’ll get a clear error.</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- REG ID TAB -->
+      <div class="grid" *ngIf="tab() === 'id'">
+        <div class="card">
+          <div class="card-title">Find by Registration ID</div>
+          <div class="card-subtitle">Enter the registration ID shown on the badge/email</div>
+
+          <div class="form-row">
+            <label class="sr-only" for="regIdInput">Registration ID</label>
+            <input
+              id="regIdInput"
+              type="text"
+              [formControl]="idForm.controls.registrationId"
+              placeholder="e.g. 64EJZJY"
+              aria-label="Registration ID"
+              autocomplete="off"
+            />
+            <button
+              class="primary-button"
+              type="button"
+              (click)="previewById()"
+              [disabled]="loading() || !idForm.valid"
+              aria-label="Preview by Registration ID"
+            >
+              Preview
+            </button>
+          </div>
+
+          <div class="mini-hint">
+            You can also use a USB barcode/QR scanner — click the input and scan; it will type the ID.
+          </div>
+        </div>
+
+        <div class="card help-card">
+          <div class="card-title">When to use this?</div>
+          <div class="card-subtitle">
+            Use Registration ID when the attendee can’t show the QR or the camera is unavailable.
+          </div>
+
+          <hr class="section-divider" />
+
+          <ul class="help-list">
+            <li><span class="dot"></span> Preview shows payment + check-in state.</li>
+            <li><span class="dot"></span> Confirm writes the check-in (idempotent).</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- PREVIEW MODAL -->
+      <div
+        class="confirm-overlay"
+        *ngIf="modalOpen()"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Confirm check-in"
+        (click)="closeModal()"
+      >
+        <div class="confirm-modal" (click)="$event.stopPropagation()">
+          <div class="confirm-header">
+            <div class="confirm-title">Confirm check-in</div>
+            <button class="icon-button" type="button" (click)="closeModal()" aria-label="Close confirm">×</button>
+          </div>
+
+          <div class="confirm-body" *ngIf="preview() as p">
+            <div class="kv">
+              <div class="k">Registration ID</div>
+              <div class="v mono">{{ p.attendee.registrationId || "—" }}</div>
+
+              <div class="k">Name</div>
+              <div class="v">{{ p.attendee.firstName || "—" }} {{ p.attendee.lastName || "" }}</div>
+
+              <div class="k">Conference Type</div>
+              <div class="v">{{ p.attendee.conferenceType || "—" }}</div>
+
+              <ng-container *ngIf="p.attendee.email">
+                <div class="k">Email</div>
+                <div class="v mono">{{ p.attendee.email }}</div>
+              </ng-container>
+
+              <ng-container *ngIf="p.source === 'id'">
+                <div class="k">Payment</div>
+                <div class="v">
+                  <span class="chip" [class.accent]="p.paymentStatus === 'PAID'">
+                    {{ p.paymentStatus || "—" }}
+                  </span>
+                </div>
+              </ng-container>
+
+              <ng-container *ngIf="p.source === 'qr'">
+                <div class="k">QR Status</div>
+                <div class="v">
+                  <span class="chip" [class.accent]="p.qr.status === 'ACTIVE'">
+                    {{ p.qr.status || "—" }}
+                  </span>
+                </div>
+              </ng-container>
+
+              <div class="k">Check-in status</div>
+              <div class="v">
+                <span class="chip" [class.accent]="p.qr.checkInStatus === 'CHECKED_IN'">
+                  {{ p.qr.checkInStatus || "NOT_CHECKED_IN" }}
+                </span>
+
+                <span class="sub" *ngIf="p.qr.checkedInAt">
+                  Checked in at: {{ p.qr.checkedInAt | date: "short" }}
+                </span>
+              </div>
+            </div>
+
+            <div class="modal-note" *ngIf="!canConfirm()">
+              <span class="muted">{{ confirmLabel() }}</span>
+            </div>
+
+            <div class="busy" *ngIf="loading()">
+              <div class="spinner" aria-hidden="true"></div>
+              <div>Working…</div>
+            </div>
+          </div>
+
+          <div class="confirm-footer">
+            <button class="secondary-button" type="button" (click)="closeModal()" aria-label="Cancel">
+              Cancel
+            </button>
+
+            <button
+              class="primary-button"
+              type="button"
+              [disabled]="loading() || !canConfirm()"
+              (click)="preview()?.source === 'qr' ? confirmQr() : confirmById()"
+              aria-label="Confirm check-in"
+            >
+              {{ loading() ? "Confirming…" : confirmLabel() }}
+            </button>
+          </div>
+        </div>
+      </div>
+      <!-- /PREVIEW MODAL -->
+    </div>
+  </div>
+</app-page-shell>

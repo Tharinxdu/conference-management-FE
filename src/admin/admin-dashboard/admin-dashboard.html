@@ -1,1 +1,243 @@
-<p>admin-dashboard works!</p>
+<!-- FILE: src/admin/admin-dashboard/admin-dashboard.html -->
+<div class="layout">
+  <!-- Sidebar -->
+  <aside class="sidebar" aria-label="Admin navigation">
+    <div class="brand">
+      <div class="brand__mark" aria-hidden="true">🛡️</div>
+      <div class="brand__text">
+        <div class="brand__title">APSC Admin</div>
+        <div class="brand__sub">Conference Ops</div>
+      </div>
+    </div>
+
+    <nav class="nav" role="navigation" aria-label="Sections">
+      <button
+        class="nav__item"
+        type="button"
+        [class.active]="active() === 'dashboard'"
+        (click)="setActive('dashboard')"
+      >
+        <span class="nav__icon" aria-hidden="true">📊</span>
+        <span class="nav__label">Dashboard</span>
+      </button>
+
+      <button
+        class="nav__item"
+        type="button"
+        [class.active]="active() === 'abstracts'"
+        (click)="setActive('abstracts')"
+      >
+        <span class="nav__icon" aria-hidden="true">📝</span>
+        <span class="nav__label">Abstracts</span>
+      </button>
+
+      <button
+        class="nav__item"
+        type="button"
+        [class.active]="active() === 'checkin'"
+        (click)="setActive('checkin')"
+      >
+        <span class="nav__icon" aria-hidden="true">✅</span>
+        <span class="nav__label">Check-in</span>
+      </button>
+
+      <button
+        class="nav__item"
+        type="button"
+        [class.active]="active() === 'registrations'"
+        (click)="setActive('registrations')"
+      >
+        <span class="nav__icon" aria-hidden="true">👥</span>
+        <span class="nav__label">Registrations</span>
+      </button>
+    </nav>
+
+    <div class="sidebar__footer">
+      <div class="hint">
+        Tip: use <span class="kbd">Check-in</span> on mobile for the best camera UX.
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main" aria-label="Admin content">
+    <!-- Dashboard view -->
+    <ng-container *ngIf="active() === 'dashboard'; else featureView">
+      <div class="page">
+        <div class="page__header">
+          <div class="page__titles">
+            <div class="page__title">Admin Dashboard</div>
+            <div class="page__subtitle">Conference overview and operational metrics</div>
+          </div>
+
+          <div class="header-actions">
+            <button
+              class="secondary-button"
+              type="button"
+              (click)="refresh()"
+              [disabled]="busy()"
+              aria-label="Refresh dashboard"
+            >
+              Refresh
+            </button>
+
+            <button
+              class="secondary-button"
+              type="button"
+              (click)="logout()"
+              [disabled]="busy()"
+              aria-label="Logout"
+            >
+              Logout
+            </button>
+          </div>
+        </div>
+
+        <div class="dash" *ngIf="stats$ | async as vm">
+          <!-- Error -->
+          <div class="banner-row" *ngIf="vm.error as err">
+            <div class="error-banner" role="alert">
+              <div class="error-title">Couldn’t load dashboard</div>
+              <div class="error-text">{{ err }}</div>
+            </div>
+          </div>
+
+          <!-- Skeleton -->
+          <div class="grid" *ngIf="vm.loading">
+            <div class="metric sk" *ngFor="let _ of [1,2,3,4,5,6,7,8]; trackBy: trackByIndex">
+              <div class="sk__top"></div>
+              <div class="sk__mid"></div>
+              <div class="sk__bot"></div>
+            </div>
+          </div>
+
+          <!-- Data -->
+          <ng-container *ngIf="!vm.loading && !vm.error && vm.data as d">
+            <div class="meta-row">
+              <div class="meta-pill">
+                <span class="dot" aria-hidden="true"></span>
+                <span class="meta-text">
+                  Last updated:
+                  <span class="mono">{{ vm.lastUpdatedIso | date : "medium" }}</span>
+                </span>
+              </div>
+
+              <div class="meta-right">
+                <div class="soft">
+                  Paid conversion:
+                  <span class="strong">{{ pct(d.registrations.paymentStatus.PAID, d.registrations.total) }}</span>
+                </div>
+                <div class="soft">
+                  Check-in rate:
+                  <span class="strong">{{ pct(d.qr.checkin.CHECKED_IN, d.registrations.total) }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="section">
+              <div class="section__title">Registrations</div>
+              <div class="grid">
+                <div class="metric">
+                  <div class="metric__label">Total registered</div>
+                  <div class="metric__value">{{ compact(d.registrations.total) }}</div>
+                  <div class="metric__sub">
+                    With QR: <span class="mono">{{ compact(d.registrations.withQr) }}</span>
+                  </div>
+                </div>
+
+                <div class="metric accent">
+                  <div class="metric__label">Paid</div>
+                  <div class="metric__value">{{ compact(d.registrations.paymentStatus.PAID) }}</div>
+                  <div class="metric__sub">
+                    {{ pct(d.registrations.paymentStatus.PAID, d.registrations.total) }} of total
+                  </div>
+                </div>
+
+                <div class="metric">
+                  <div class="metric__label">Pending payments</div>
+                  <div class="metric__value">{{ compact(d.registrations.paymentStatus.PENDING) }}</div>
+                  <div class="metric__sub">
+                    Unpaid: <span class="mono">{{ compact(d.registrations.paymentStatus.UNPAID) }}</span>
+                    · Failed: <span class="mono">{{ compact(d.registrations.paymentStatus.FAILED) }}</span>
+                  </div>
+                </div>
+
+                <div class="metric money">
+                  <div class="metric__label">Revenue collected</div>
+                  <div class="metric__value">{{ currencyUsd(d.revenue.paidTotal) }}</div>
+                  <div class="metric__sub">
+                    Pending: <span class="mono">{{ currencyUsd(d.revenue.pendingTotal) }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="section">
+              <div class="section__title">Operations</div>
+              <div class="grid">
+                <div class="metric">
+                  <div class="metric__label">Checked in</div>
+                  <div class="metric__value">{{ compact(d.qr.checkin.CHECKED_IN) }}</div>
+                  <div class="metric__sub">
+                    Not checked in: <span class="mono">{{ compact(d.qr.checkin.NOT_CHECKED_IN) }}</span>
+                  </div>
+                </div>
+
+                <div class="metric">
+                  <div class="metric__label">QR tokens</div>
+                  <div class="metric__value">{{ compact(d.qr.total) }}</div>
+                  <div class="metric__sub">
+                    Active: <span class="mono">{{ compact(d.qr.status.ACTIVE) }}</span>
+                    · Revoked: <span class="mono">{{ compact(d.qr.status.REVOKED) }}</span>
+                    · Expired: <span class="mono">{{ compact(d.qr.status.EXPIRED) }}</span>
+                  </div>
+                </div>
+
+                <div class="metric accent">
+                  <div class="metric__label">Abstract submissions</div>
+                  <div class="metric__value">{{ compact(d.abstracts.total) }}</div>
+                  <div class="metric__sub">
+                    Submitted: <span class="mono">{{ compact(d.abstracts.status.submitted) }}</span>
+                    · Under review: <span class="mono">{{ compact(d.abstracts.status['under-review']) }}</span>
+                  </div>
+                </div>
+
+                <div class="metric">
+                  <div class="metric__label">Abstract decisions</div>
+                  <div class="metric__value">
+                    <span class="mono">{{ compact(d.abstracts.status.approved) }}</span>
+                    <span class="sep" aria-hidden="true">/</span>
+                    <span class="mono">{{ compact(d.abstracts.status.rejected) }}</span>
+                  </div>
+                  <div class="metric__sub">Approved / Rejected</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="quick">
+              <div class="quick__title">Quick actions</div>
+              <div class="quick__row">
+                <button class="secondary-button" type="button" (click)="setActive('checkin')">
+                  Go to Check-in
+                </button>
+                <button class="secondary-button" type="button" (click)="setActive('registrations')">
+                  Manage Registrations
+                </button>
+                <button class="secondary-button" type="button" (click)="setActive('abstracts')">
+                  Review Abstracts
+                </button>
+              </div>
+            </div>
+          </ng-container>
+        </div>
+      </div>
+    </ng-container>
+
+    <!-- Feature views (AdminAbstract / CheckIn / AdminRegistration render their own page-shell) -->
+    <ng-template #featureView>
+      <div class="feature-wrap">
+        <ng-container *ngComponentOutlet="viewComponent()"></ng-container>
+      </div>
+    </ng-template>
+  </main>
+</div>
