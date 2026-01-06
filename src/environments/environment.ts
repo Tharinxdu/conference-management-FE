@@ -1,5 +1,5 @@
 export const environment = {
   production: false,
-  apiUrl: 'https://52.66.200.156:3000/api',
+  apiUrl: 'https://browsing-seen-jim-editing.trycloudflare.com/api',
   publicAppUrl: 'http://localhost:4200',
 };
