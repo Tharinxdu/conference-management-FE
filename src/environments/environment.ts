@@ -1,5 +1,5 @@
 export const environment = {
   production: false,
-  apiUrl: 'https://etc-match-suggests-confident.trycloudflare.com/api',
-  publicAppUrl: 'http://localhost:4200',
+  apiUrl: 'https://api.apsc2026.lk/api',
+  publicAppUrl: 'https://portal.apsc2026.lk',
 };
