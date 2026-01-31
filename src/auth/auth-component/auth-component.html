@@ -1,30 +1,36 @@
-<!-- <div class="page-shell">
-  <header class="page-header">
-    <div>
-      <h1>APSC 2026 – Abstract Submission Portal</h1>
-      <p>Login or create an account to submit and manage your abstracts.</p>
-    </div>
-  </header>
+<!-- FILE: auth-component.html -->
 
-  <main class="page-main"> -->
-
-<app-page-shell title="APSC 2026 – Abstract Submission Portal"
-  subtitle="Login or create an account to submit and manage your abstracts.">
+<app-page-shell
+  title="APSC 2026 – Abstract Submission Portal"
+  subtitle="Login or create an account to submit and manage your abstracts."
+>
   <section class="card auth-wrapper">
     <div class="auth-tabs">
-      <button class="tab-button" [class.active]="activeTab() === 'loginTab'" data-tab="loginTab" type="button"
-        (click)="setTab('loginTab')">
+      <button
+        class="tab-button"
+        [class.active]="activeTab() === 'loginTab'"
+        data-tab="loginTab"
+        type="button"
+        (click)="setTab('loginTab')"
+      >
         Login
       </button>
-      <button class="tab-button" [class.active]="activeTab() === 'registerTab'" data-tab="registerTab" type="button"
-        (click)="setTab('registerTab')">
+
+      <button
+        class="tab-button"
+        [class.active]="activeTab() === 'registerTab'"
+        data-tab="registerTab"
+        type="button"
+        (click)="setTab('registerTab')"
+      >
         Create Account
       </button>
     </div>
 
+    <!-- LOGIN -->
     <div id="loginTab" class="auth-tab" [class.hidden]="activeTab() !== 'loginTab'">
       <h2 class="card-title">Login</h2>
-      <p class="card-subtitle">Enter your email and password.</p>
+      <p class="card-subtitle">If you have created an account</p>
 
       <form id="loginForm" novalidate [formGroup]="loginForm" (ngSubmit)="onLoginSubmit()">
         <div class="form-grid">
@@ -38,7 +44,24 @@
 
           <div class="form-group full-width">
             <label for="loginPassword">Password <span class="required">*</span></label>
-            <input type="password" id="loginPassword" name="password" required formControlName="password" />
+
+            <input
+              [type]="showLoginPassword() ? 'text' : 'password'"
+              id="loginPassword"
+              name="password"
+              required
+              formControlName="password"
+            />
+
+            <label class="show-password">
+              <input
+                type="checkbox"
+                [checked]="showLoginPassword()"
+                (change)="toggleLoginPassword()"
+              />
+              <span>{{ showLoginPassword() ? 'Hide password' : 'Show password' }}</span>
+            </label>
+
             <div class="error-message" data-error-for="loginPassword">
               {{ errorFor(loginForm, 'password', 'login') }}
             </div>
@@ -50,8 +73,13 @@
             {{ loginLoading() ? 'Logging in…' : 'Login' }}
           </button>
 
-          <button type="button" class="link-button" id="forgotPasswordButton" (click)="openForgotModal()"
-            [disabled]="loginLoading()">
+          <button
+            type="button"
+            class="link-button"
+            id="forgotPasswordButton"
+            (click)="openForgotModal()"
+            [disabled]="loginLoading()"
+          >
             Forgot password?
           </button>
 
@@ -60,6 +88,7 @@
       </form>
     </div>
 
+    <!-- REGISTER -->
     <div id="registerTab" class="auth-tab" [class.hidden]="activeTab() !== 'registerTab'">
       <h2 class="card-title">Create Account</h2>
       <p class="card-subtitle">
@@ -78,8 +107,26 @@
 
           <div class="form-group full-width">
             <label for="registerPassword">Password <span class="required">*</span></label>
-            <input type="password" id="registerPassword" name="password" required formControlName="password" />
+
+            <input
+              [type]="showRegisterPassword() ? 'text' : 'password'"
+              id="registerPassword"
+              name="password"
+              required
+              formControlName="password"
+            />
+
             <small class="help-text">Minimum 8 characters.</small>
+
+            <label class="show-password">
+              <input
+                type="checkbox"
+                [checked]="showRegisterPassword()"
+                (change)="toggleRegisterPassword()"
+              />
+              <span>{{ showRegisterPassword() ? 'Hide password' : 'Show password' }}</span>
+            </label>
+
             <div class="error-message" data-error-for="registerPassword">
               {{ errorFor(registerForm, 'password', 'register') }}
             </div>
@@ -89,8 +136,24 @@
             <label for="registerConfirmPassword">
               Confirm Password <span class="required">*</span>
             </label>
-            <input type="password" id="registerConfirmPassword" name="confirmPassword" required
-              formControlName="confirmPassword" />
+
+            <input
+              [type]="showRegisterConfirmPassword() ? 'text' : 'password'"
+              id="registerConfirmPassword"
+              name="confirmPassword"
+              required
+              formControlName="confirmPassword"
+            />
+
+            <label class="show-password">
+              <input
+                type="checkbox"
+                [checked]="showRegisterConfirmPassword()"
+                (change)="toggleRegisterConfirmPassword()"
+              />
+              <span>{{ showRegisterConfirmPassword() ? 'Hide password' : 'Show password' }}</span>
+            </label>
+
             <div class="error-message" data-error-for="registerConfirmPassword">
               {{ errorFor(registerForm, 'confirmPassword', 'register') }}
             </div>
@@ -107,11 +170,14 @@
     </div>
   </section>
 </app-page-shell>
-<!-- </main>
-</div> -->
 
 <!-- Forgot Password Modal -->
-<div class="modal-overlay" id="forgotPasswordModal" [class.hidden]="!showForgotModal()" (click)="closeForgotModal()">
+<div
+  class="modal-overlay"
+  id="forgotPasswordModal"
+  [class.hidden]="!showForgotModal()"
+  (click)="closeForgotModal()"
+>
   <div class="modal" (click)="$event.stopPropagation()">
     <div class="modal-header">
       <h3>Reset Password</h3>

@@ -1,3 +1,5 @@
+/* FILE: auth-component.scss */
+
 :host {
   display: block;
 }
@@ -26,12 +28,7 @@
   cursor: pointer;
 
   &.active {
-    background: radial-gradient(
-      circle at top left,
-      #22d3ee 0,
-      #0ea5e9 40%,
-      #0284c7 100%
-    );
+    background: radial-gradient(circle at top left, #22d3ee 0, #0ea5e9 40%, #0284c7 100%);
     color: #020617;
     border-color: rgba(56, 189, 248, 0.7);
     font-weight: 600;
@@ -65,7 +62,8 @@ label {
 }
 
 input[type='email'],
-input[type='password'] {
+input[type='password'],
+input[type='text'] {
   background: rgba(15, 23, 42, 0.9);
   border-radius: var(--radius-md);
   border: 1px solid rgba(148, 163, 184, 0.35);
@@ -76,9 +74,32 @@ input[type='password'] {
 }
 
 input[type='email']:focus,
-input[type='password']:focus {
+input[type='password']:focus,
+input[type='text']:focus {
   border-color: var(--color-accent);
   box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.4);
+}
+
+/* Show/Hide password checkbox row */
+.show-password {
+  margin-top: 0.35rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  user-select: none;
+
+  font-size: 0.84rem;
+  color: var(--color-text-muted);
+
+  input[type='checkbox'] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--color-accent);
+  }
+
+  span {
+    line-height: 1.2;
+  }
 }
 
 /* Status + errors */
@@ -100,7 +121,7 @@ input[type='password']:focus {
   min-height: 0.9em;
 }
 
-/* Modal overlay click UX (optional; doesn’t change layout) */
+/* Modal overlay click UX */
 .modal-overlay {
   cursor: pointer;
 }

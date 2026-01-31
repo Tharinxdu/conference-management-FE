@@ -1,3 +1,5 @@
+/* FILE: auth-component.ts */
+
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, signal } from '@angular/core';
 import {
@@ -20,7 +22,7 @@ type FormScope = 'login' | 'register' | 'forgot';
 @Component({
   selector: 'app-auth-component',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule,PageShell],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, PageShell],
   templateUrl: './auth-component.html',
   styleUrl: './auth-component.scss',
 })
@@ -39,6 +41,23 @@ export class AuthComponent implements OnInit, OnDestroy {
   forgotStatus = signal('');
 
   showForgotModal = signal(false);
+
+  // Password visibility toggles
+  showLoginPassword = signal(false);
+  showRegisterPassword = signal(false);
+  showRegisterConfirmPassword = signal(false);
+
+  toggleLoginPassword(): void {
+    this.showLoginPassword.update((v) => !v);
+  }
+
+  toggleRegisterPassword(): void {
+    this.showRegisterPassword.update((v) => !v);
+  }
+
+  toggleRegisterConfirmPassword(): void {
+    this.showRegisterConfirmPassword.update((v) => !v);
+  }
 
   // Attempts (signals so template updates)
   private loginAttempted = signal(false);
@@ -91,9 +110,15 @@ export class AuthComponent implements OnInit, OnDestroy {
 
   setTab(tab: TabKey): void {
     this.activeTab.set(tab);
-    // clear opposite status like legacy UX
+
+    // reset per-tab status messages
     if (tab === 'loginTab') this.registerStatus.set('');
     if (tab === 'registerTab') this.loginStatus.set('');
+
+    // hide passwords when switching tabs
+    this.showLoginPassword.set(false);
+    this.showRegisterPassword.set(false);
+    this.showRegisterConfirmPassword.set(false);
   }
 
   openForgotModal(): void {
@@ -146,59 +171,62 @@ export class AuthComponent implements OnInit, OnDestroy {
   }
 
   onRegisterSubmit(): void {
-  this.registerAttempted.set(true);
-  this.registerStatus.set('');
+    this.registerAttempted.set(true);
+    this.registerStatus.set('');
 
-  if (this.registerForm.invalid) {
-    this.registerForm.markAllAsTouched();
-    this.registerStatus.set('Please fix the highlighted errors.');
-    return;
+    if (this.registerForm.invalid) {
+      this.registerForm.markAllAsTouched();
+      this.registerStatus.set('Please fix the highlighted errors.');
+      return;
+    }
+
+    const { email, password, confirmPassword } =
+      this.registerForm.getRawValue() as {
+        email: string;
+        password: string;
+        confirmPassword: string;
+      };
+
+    this.registerLoading.set(true);
+    this.registerStatus.set('Creating account…');
+
+    const payload: RegisterRequest = { email, password, confirmPassword };
+
+    this.auth
+      .register(payload)
+      .pipe(
+        takeUntil(this.destroy$),
+        finalize(() => this.registerLoading.set(false))
+      )
+      .subscribe({
+        next: () => {
+          this.registerStatus.set('Account created. Please log in to continue.');
+
+          // Switch to login tab
+          this.activeTab.set('loginTab');
+
+          // Prefill login email
+          const loginEmailControl = this.loginForm.get('email');
+          if (loginEmailControl) {
+            loginEmailControl.setValue(email);
+            loginEmailControl.markAsTouched();
+          }
+
+          // Clear password fields
+          this.registerForm.get('password')?.reset('');
+          this.registerForm.get('confirmPassword')?.reset('');
+
+          // Hide password visibility toggles
+          this.showRegisterPassword.set(false);
+          this.showRegisterConfirmPassword.set(false);
+        },
+        error: (err) => {
+          this.registerStatus.set(
+            this.readApiError(err) || 'Registration failed. Please try again.'
+          );
+        },
+      });
   }
-
-  const { email, password, confirmPassword } = this.registerForm.getRawValue() as {
-    email: string;
-    password: string;
-    confirmPassword: string;
-  };
-
-  this.registerLoading.set(true);
-  this.registerStatus.set('Creating account…');
-
-  const payload: RegisterRequest = { email, password, confirmPassword };
-
-  this.auth
-    .register(payload) 
-    .pipe(
-      takeUntil(this.destroy$),
-      finalize(() => this.registerLoading.set(false))
-    )
-    .subscribe({
-      next: () => {
-        // ✅ Registration success, but NOT logged in (no cookies/session yet)
-        this.registerStatus.set('Account created. Please log in to continue.');
-
-        // Switch to login tab 
-        this.activeTab.set('loginTab');
-
-        // Prefill login email for convenience (optional)
-        const loginEmailControl = this.loginForm.get('email');
-        if (loginEmailControl) {
-          loginEmailControl.setValue(email);
-          loginEmailControl.markAsTouched();
-        }
-
-        // Clear password fields on register form (optional safety UX)
-        this.registerForm.get('password')?.reset('');
-        this.registerForm.get('confirmPassword')?.reset('');
-      },
-      error: (err) => {
-        this.registerStatus.set(
-          this.readApiError(err) || 'Registration failed. Please try again.'
-        );
-      },
-    });
-}
-
 
   onForgotSubmit(): void {
     this.forgotAttempted.set(true);
