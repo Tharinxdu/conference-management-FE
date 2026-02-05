@@ -1,4 +1,4 @@
-import { Component, signal, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, signal, OnInit, ChangeDetectorRef, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { environment } from '../environments/environment';
@@ -6,6 +6,7 @@ import { HttpClient, HttpClientModule } from '@angular/common/http';
 import { EMPTY } from 'rxjs';
 import { catchError, finalize } from 'rxjs/operators';
 import { PageShell } from '../page-shell/page-shell';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 export const COUNTRY_INCOME_GROUPS: Record<string, string> = {
   // LOW / LOWER-MIDDLE INCOME ECONOMIES
@@ -239,16 +240,16 @@ function getIncomeGroup(country: string): string | null {
 export const FEE_RULES = {
   full: {
     LOWER: {
-      physician: { early: 75, late: 100 },
-      'non-physician': { early: 25, late: 40 },
+      physician: { early: 100, late: 150 },
+      'non-physician': { early: 50, late: 75 },
     },
     UPPER: {
-      physician: { early: 200, late: 225 },
-      'non-physician': { early: 75, late: 100 },
+      physician: { early: 250, late: 300 },
+      'non-physician': { early: 100, late: 150 },
     },
     LOCAL: {
-      physician: { early: 30, late: 80 },
-      'non-physician': { early: 20, late: 40 },
+      physician: { early: 30, late: 50 },
+      'non-physician': { early: 20, late: 30 },
     },
   },
   rehab: {
@@ -258,7 +259,7 @@ export const FEE_RULES = {
 
 function getFeePeriod(): 'early' | 'late' {
   const today = new Date();
-  const earlyEnd = new Date('2026-09-30');
+  const earlyEnd = new Date('2026-09-30T23:59:59Z');
   return today <= earlyEnd ? 'early' : 'late';
 }
 
@@ -289,19 +290,13 @@ export function calculateFee(args: {
   return catFees[period];
 }
 
-type RegistrationResponse = {
-  registrationId?: string;
-  feeAmount?: number;
-  paymentStatus?: string;
-  message?: string;
-};
-
 @Component({
   selector: 'app-registration',
   standalone: true,
-  imports: [CommonModule, FormsModule, HttpClientModule, PageShell],
+  imports: [CommonModule, FormsModule, HttpClientModule, PageShell, MatSnackBarModule],
   templateUrl: './registration.html',
   styleUrl: './registration.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class Registration implements OnInit {
   // Form model properties
@@ -331,7 +326,7 @@ export class Registration implements OnInit {
 
   // UI state
   formStatus = '';
-  submitting = false; // ✅ NEW: prevents double submit + controls UI
+  submitting = false;
   successVisible = false;
   registrationCardHidden = false;
   successDetails = '';
@@ -358,8 +353,23 @@ export class Registration implements OnInit {
 
   constructor(
     private readonly http: HttpClient,
-    private readonly cdr: ChangeDetectorRef
+    private readonly cdr: ChangeDetectorRef,
+    private readonly snack: MatSnackBar
   ) {}
+
+  private toastSuccess(message: string): void {
+    this.snack.open(message, 'OK', {
+      duration: 6500,
+      panelClass: ['snack-success'],
+    });
+  }
+
+  private toastError(message: string): void {
+    this.snack.open(message, 'Dismiss', {
+      duration: 9500,
+      panelClass: ['snack-error'],
+    });
+  }
 
   async ngOnInit(): Promise<void> {
     this.countries = Object.keys(COUNTRY_INCOME_GROUPS).sort();
@@ -393,6 +403,8 @@ export class Registration implements OnInit {
       this.cdr.markForCheck();
     } catch (err) {
       console.error('Failed to fetch country codes', err);
+      // optional toast:
+      // this.toastError('Failed to load country codes. You can still continue.');
     }
   }
 
@@ -465,7 +477,6 @@ export class Registration implements OnInit {
   private setError(name: string, message: string | null): void {
     const msg = message || '';
 
-    // Track order only when setting a non-empty error
     if (msg && !this.validationErrorOrder.includes(name)) {
       this.validationErrorOrder.push(name);
     }
@@ -484,7 +495,6 @@ export class Registration implements OnInit {
   private scrollToFirstError(): void {
     if (!this.validationErrorOrder.length) return;
 
-    // Wait a tick so Angular renders error messages before scrolling
     setTimeout(() => {
       this.scrollToField(this.validationErrorOrder[0]);
     }, 0);
@@ -494,13 +504,10 @@ export class Registration implements OnInit {
     const form = document.getElementById('registrationForm');
     if (!form) return;
 
-    // Prefer the error message anchor (works for radios/consent areas too)
     let anchor = form.querySelector(`[data-error-for="${CSS.escape(field)}"]`) as HTMLElement | null;
 
-    // For regular inputs/selects, use the input itself as focus target
     let focusEl: HTMLElement | null = null;
 
-    // Special cases
     if (field === 'conferenceType') {
       focusEl = form.querySelector(`input[name="conferenceType"]`) as HTMLElement | null;
     } else if (field === 'consent') {
@@ -508,13 +515,11 @@ export class Registration implements OnInit {
       else if (!this.consentTerms) focusEl = document.getElementById('consentTerms') as HTMLElement | null;
       else focusEl = document.getElementById('consentDataUse') as HTMLElement | null;
     } else {
-      // Normal fields: prefer id, fallback to name
       focusEl =
         (document.getElementById(field) as HTMLElement | null) ||
         (form.querySelector(`[name="${CSS.escape(field)}"]`) as HTMLElement | null);
     }
 
-    // If we found an error-message anchor, scroll to a nicer container around it
     if (anchor) {
       anchor =
         (anchor.closest('.form-group, .consent-item, .form-section') as HTMLElement | null) ||
@@ -526,7 +531,6 @@ export class Registration implements OnInit {
 
     target.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-    // Focus without triggering another scroll jump
     requestAnimationFrame(() => {
       const fallbackFocusable = target.querySelector('input, select, textarea, button') as HTMLElement | null;
       const elToFocus = focusEl || fallbackFocusable;
@@ -549,10 +553,8 @@ export class Registration implements OnInit {
       'firstName',
       'lastName',
       'designation',
-      // 'institution',
       'country',
       'email',
-      // 'mobile',
       'participantCategory',
     ];
 
@@ -566,14 +568,10 @@ export class Registration implements OnInit {
           return this.lastName;
         case 'designation':
           return this.designation;
-        // case 'institution':
-        //   return this.institution;
         case 'country':
           return this.country;
         case 'email':
           return this.email;
-        // case 'mobile':
-        //   return this.mobile;
         case 'participantCategory':
           return this.participantCategory;
         default:
@@ -613,7 +611,6 @@ export class Registration implements OnInit {
     return valid;
   }
 
-  // ✅ UPDATED SUBMIT: create registration -> initiate OnePay -> redirect to gateway
   onSubmit(): void {
     if (this.submitting) return;
 
@@ -621,6 +618,7 @@ export class Registration implements OnInit {
 
     if (!this.validateForm()) {
       this.formStatus = 'Please fix the highlighted errors.';
+      this.toastError('Please fix the highlighted errors.');
       this.cdr.markForCheck();
       this.scrollToFirstError();
       return;
@@ -630,15 +628,17 @@ export class Registration implements OnInit {
 
     this.submitting = true;
     this.formStatus = 'Submitting registration...';
+    this.toastSuccess('Submitting registration…');
     this.cdr.markForCheck();
 
     this.http
-      // 1) Create registration
       .post<any>(`${this.apiUrl}/registrations`, payload)
       .pipe(
         catchError((err) => {
           const msg = err?.error?.message || err?.message || 'Failed to submit registration.';
           this.formStatus = msg;
+          this.toastError(msg);
+          this.submitting = false;
           this.cdr.markForCheck();
           return EMPTY;
         })
@@ -646,18 +646,19 @@ export class Registration implements OnInit {
       .subscribe((reg) => {
         if (!reg) return;
 
-        // Your backend returns Mongo document => needs _id for payment initiation
         const registrationMongoId = reg?._id;
 
         if (!registrationMongoId) {
-          this.formStatus = 'Registration created but missing registration id. Please contact support.';
+          const msg = 'Registration created but missing registration id. Please contact support.';
+          this.formStatus = msg;
+          this.toastError(msg);
           this.submitting = false;
           this.cdr.markForCheck();
           return;
         }
 
-        // 2) Initiate OnePay
         this.formStatus = 'Redirecting to payment...';
+        this.toastSuccess('Redirecting to payment…');
         this.cdr.markForCheck();
 
         this.http
@@ -669,13 +670,13 @@ export class Registration implements OnInit {
                 err?.message ||
                 'Registration created but payment initiation failed.';
               this.formStatus = msg;
+              this.toastError(msg);
               this.submitting = false;
               this.cdr.markForCheck();
               return EMPTY;
             }),
             finalize(() => {
-              // If we redirect successfully, this won't matter.
-              // If initiation fails, we must re-enable the button/UI.
+              // If redirect succeeds, this won’t matter. If it fails, re-enable UI.
               this.submitting = false;
               this.cdr.markForCheck();
             })
@@ -686,12 +687,13 @@ export class Registration implements OnInit {
             const redirectUrl = payRes?.redirectUrl;
 
             if (!redirectUrl) {
-              this.formStatus = 'Payment initiation succeeded but no redirect URL was returned.';
+              const msg = 'Payment initiation succeeded but no redirect URL was returned.';
+              this.formStatus = msg;
+              this.toastError(msg);
               this.cdr.markForCheck();
               return;
             }
 
-            // ✅ Redirect user to OnePay gateway
             window.location.assign(redirectUrl);
           });
       });

@@ -1,3 +1,5 @@
+// FILE: src/abstract/abstract-dashboard/abstract-dashboard.ts
+
 import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
@@ -27,6 +29,7 @@ import {
 } from '../../services/profile.service';
 
 import { PageShell } from '../../page-shell/page-shell';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 type ProfileMode = 'create' | 'edit';
 type TitleEnum = 'Dr' | 'Prof' | 'Mr' | 'Ms' | 'Other';
@@ -45,7 +48,13 @@ type ProfileFormModel = {
 @Component({
   selector: 'app-abstract-dashboard',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, PageShell, AbstractFormModal],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    PageShell,
+    AbstractFormModal,
+    MatSnackBarModule,
+  ],
   templateUrl: './abstract-dashboard.html',
   styleUrl: './abstract-dashboard.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -91,7 +100,8 @@ export class AbstractDashboard implements OnInit, OnDestroy {
     private profileApi: PresentingAuthorProfileService,
     private router: Router,
     private fb: FormBuilder,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private snack: MatSnackBar
   ) {
     this.profileForm = this.fb.group<ProfileFormModel>({
       title: new FormControl<TitleEnum>('Dr', {
@@ -115,6 +125,20 @@ export class AbstractDashboard implements OnInit, OnDestroy {
       department: new FormControl<string>('', { nonNullable: true }),
       city: new FormControl<string>('', { nonNullable: true }),
       designation: new FormControl<string>('', { nonNullable: true }),
+    });
+  }
+
+  private toastSuccess(message: string, duration = 6500): void {
+    this.snack.open(message, 'OK', {
+      duration,
+      panelClass: ['snack-success'],
+    });
+  }
+
+  private toastError(message: string, duration = 9500): void {
+    this.snack.open(message, 'Dismiss', {
+      duration,
+      panelClass: ['snack-error'],
     });
   }
 
@@ -165,6 +189,8 @@ export class AbstractDashboard implements OnInit, OnDestroy {
           this.profile = null;
           this.profileError =
             this.readApiError(err) || 'Failed to check profile.';
+          this.toastError(this.profileError);
+
           this.openProfileCreate(true);
           this.cdr.markForCheck();
         },
@@ -198,8 +224,12 @@ export class AbstractDashboard implements OnInit, OnDestroy {
         },
         error: (err) => {
           if (background && this.abstracts.length > 0) return;
+
           this.error = this.readApiError(err) || 'Failed to fetch abstracts.';
           if (!background) this.loading = false;
+
+          if (!background) this.toastError(this.error);
+
           this.cdr.markForCheck();
         },
       });
@@ -207,6 +237,40 @@ export class AbstractDashboard implements OnInit, OnDestroy {
 
   private softRefetch(): void {
     this.reload(true);
+  }
+
+  /* ---------------------------
+   * ✅ Toolbar button visibility (no arrow funcs in template)
+   * --------------------------- */
+
+  get hasAnyAbstracts(): boolean {
+    return Array.isArray(this.abstracts) && this.abstracts.length > 0;
+  }
+
+  get hasSubmittedAbstracts(): boolean {
+    if (!this.hasAnyAbstracts) return false;
+    for (const a of this.abstracts) {
+      if (this.normStatus(a) === 'submitted') return true;
+    }
+    return false;
+  }
+
+  get showToolbarNewAbstractButton(): boolean {
+    return (
+      !this.loading &&
+      !this.error &&
+      this.hasAnyAbstracts &&
+      this.hasSubmittedAbstracts
+    );
+  }
+
+  get showToolbarCreateAbstractButton(): boolean {
+    return (
+      !this.loading &&
+      !this.error &&
+      this.hasAnyAbstracts &&
+      !this.hasSubmittedAbstracts
+    );
   }
 
   /* ---------------------------
@@ -310,6 +374,7 @@ export class AbstractDashboard implements OnInit, OnDestroy {
     if (this.profileMode === 'create') {
       if (this.profileForm.invalid) {
         this.profileError = 'Please fill all required fields.';
+        this.toastError(this.profileError);
         this.cdr.markForCheck();
         return;
       }
@@ -337,6 +402,8 @@ export class AbstractDashboard implements OnInit, OnDestroy {
             this.profileError = '';
             this.patchProfileForm(this.profile);
 
+            this.toastSuccess('Profile created successfully.');
+
             this.savingBusy =
               this.modalOpen ||
               this.confirmOpen ||
@@ -347,6 +414,7 @@ export class AbstractDashboard implements OnInit, OnDestroy {
           error: (err) => {
             this.profileError =
               this.readApiError(err) || 'Failed to create profile.';
+            this.toastError(this.profileError);
             this.cdr.markForCheck();
           },
         });
@@ -354,7 +422,6 @@ export class AbstractDashboard implements OnInit, OnDestroy {
       return;
     }
 
-    // EDIT mode: only optional fields
     const raw = this.profileForm.getRawValue();
     const updates: Partial<ProfileDTO> = {
       affiliation: raw.affiliation || '',
@@ -371,6 +438,7 @@ export class AbstractDashboard implements OnInit, OnDestroy {
 
     if (!changed) {
       this.profileError = 'No changes to update.';
+      this.toastError(this.profileError);
       this.cdr.markForCheck();
       return;
     }
@@ -394,6 +462,8 @@ export class AbstractDashboard implements OnInit, OnDestroy {
           this.profileGateOpen = false;
           this.profileError = '';
 
+          this.toastSuccess('Profile updated successfully.');
+
           this.savingBusy =
             this.modalOpen ||
             this.confirmOpen ||
@@ -404,6 +474,7 @@ export class AbstractDashboard implements OnInit, OnDestroy {
         error: (err) => {
           this.profileError =
             this.readApiError(err) || 'Failed to update profile.';
+          this.toastError(this.profileError);
           this.cdr.markForCheck();
         },
       });
@@ -455,8 +526,8 @@ export class AbstractDashboard implements OnInit, OnDestroy {
   }
 
   openEdit(a: AbstractDTO): void {
-    // ✅ If locked, open view instead of edit
     if (this.isLocked(a)) {
+      this.toastError('This abstract is locked and cannot be edited.');
       return this.openView(a);
     }
 
@@ -504,8 +575,10 @@ export class AbstractDashboard implements OnInit, OnDestroy {
    * --------------------------- */
 
   askDelete(a: AbstractDTO): void {
-    // ✅ prevent delete UI if locked
-    if (this.isLocked(a)) return;
+    if (this.isLocked(a)) {
+      this.toastError('This abstract is locked and cannot be deleted.');
+      return;
+    }
 
     if (this.isDeleting(a) || this.loading) return;
 
@@ -518,12 +591,14 @@ export class AbstractDashboard implements OnInit, OnDestroy {
   }
 
   closeConfirm(): void {
+    // (left as-is) - you can still keep the busy guard if you want
     if (this.confirmBusy) return;
 
     this.confirmOpen = false;
     this.confirmTarget = null;
     this.confirmError = '';
-    this.savingBusy = this.modalOpen || this.deletingIds.size > 0 || this.profileGateOpen;
+    this.savingBusy =
+      this.modalOpen || this.deletingIds.size > 0 || this.profileGateOpen;
     this.cdr.markForCheck();
   }
 
@@ -533,9 +608,9 @@ export class AbstractDashboard implements OnInit, OnDestroy {
 
     if (!target || !id || this.confirmBusy) return;
 
-    // ✅ extra guard
     if (this.isLocked(target)) {
       this.confirmError = 'This abstract is locked and cannot be deleted.';
+      this.toastError(this.confirmError);
       this.cdr.markForCheck();
       return;
     }
@@ -548,21 +623,36 @@ export class AbstractDashboard implements OnInit, OnDestroy {
 
     this.api
       .deleteMyAbstract(id)
-      .pipe(takeUntil(this.destroy$))
+      .pipe(
+        takeUntil(this.destroy$),
+        // ✅ Always clear busy flags (even if something throws inside next/error)
+        finalize(() => {
+          this.confirmBusy = false;
+          this.setDeleting(id, false); // also recomputes savingBusy
+          this.cdr.markForCheck();
+        })
+      )
       .subscribe({
         next: () => {
+          // ✅ Close modal reliably (don’t depend on closeConfirm which may be guarded)
+          this.confirmOpen = false;
+          this.confirmTarget = null;
+          this.confirmError = '';
+
+          // ✅ Update UI instantly
           this.abstracts = this.abstracts.filter((x) => this.getId(x) !== id);
-          this.setDeleting(id, false);
-          this.confirmBusy = false;
-          this.closeConfirm();
+
+          // ✅ Reload in background to sync server state + toolbar conditions
+          this.softRefetch();
+
+          this.toastSuccess('Abstract deleted.');
           this.cdr.markForCheck();
         },
         error: (err) => {
-          this.setDeleting(id, false);
-          this.confirmBusy = false;
           this.confirmError =
             this.readApiError(err) || 'Failed to delete abstract.';
-          this.savingBusy = true;
+          this.toastError(this.confirmError);
+          // keep confirmOpen=true so user can retry/cancel
           this.cdr.markForCheck();
         },
       });
@@ -592,7 +682,6 @@ export class AbstractDashboard implements OnInit, OnDestroy {
    * --------------------------- */
 
   isLocked(a: AbstractDTO): boolean {
-    // Backend rule: only submitted is editable
     return this.normStatus(a) !== 'submitted';
   }
 
@@ -674,7 +763,6 @@ export class AbstractDashboard implements OnInit, OnDestroy {
       return anyA?.submittedAt ?? anyA?.createdAt ?? anyA?.created_at ?? null;
     }
 
-    // Status changes usually update updatedAt in Mongo because timestamps:true
     return (
       anyA?.updatedAt ??
       anyA?.updated_at ??

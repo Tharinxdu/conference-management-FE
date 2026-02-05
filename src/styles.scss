@@ -1,3 +1,40 @@
+
+// Include theming for Angular Material with `mat.theme()`.
+// This Sass mixin will define CSS variables that are used for styling Angular Material
+// components according to the Material 3 design spec.
+// Learn more about theming and how to use it for your application's
+// custom components at https://material.angular.dev/guide/theming
+@use '@angular/material' as mat;
+
+html {
+  height: 100%;
+  @include mat.theme((
+    color: (
+      primary: mat.$azure-palette,
+      tertiary: mat.$blue-palette,
+    ),
+    typography: Roboto,
+    density: 0,
+  ));
+}
+
+body {
+  // Default the application to a light color theme. This can be changed to
+  // `dark` to enable the dark color theme, or to `light dark` to defer to the
+  // user's system settings.
+  color-scheme: light;
+
+  // Set a default background, font and text colors for the application using
+  // Angular Material's system-level CSS variables. Learn more about these
+  // variables at https://material.angular.dev/guide/system-variables
+  background-color: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-body-medium);
+
+  // Reset the user agent margin.
+  margin: 0;
+  height: 100%;
+}
 /* ================================
    global.scss
    ================================ */
@@ -368,6 +405,89 @@ textarea:focus {
     color: var(--color-accent);
   }
 }
+
+/* ===== Modern Snackbars (Global) ===== */
+
+.mat-mdc-snack-bar-container.snack-success,
+.mat-mdc-snack-bar-container.snack-error {
+  /* little lift + blur, centered feel */
+  margin: 16px !important;
+}
+
+.mat-mdc-snack-bar-container.snack-success .mdc-snackbar__surface,
+.mat-mdc-snack-bar-container.snack-error .mdc-snackbar__surface {
+  border-radius: 16px !important;
+  padding: 14px 16px !important;
+  min-width: 320px;
+  max-width: 520px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow:
+    0 18px 50px rgba(0, 0, 0, 0.45),
+    0 6px 18px rgba(0, 0, 0, 0.28) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.mat-mdc-snack-bar-container.snack-success .mdc-snackbar__label,
+.mat-mdc-snack-bar-container.snack-error .mdc-snackbar__label {
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.2px;
+  line-height: 1.35;
+}
+
+.mat-mdc-snack-bar-container.snack-success .mdc-button__label,
+.mat-mdc-snack-bar-container.snack-error .mdc-button__label {
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+/* SUCCESS look */
+.mat-mdc-snack-bar-container.snack-success .mdc-snackbar__surface {
+  background: rgba(16, 185, 129, 0.12) !important; /* emerald glass */
+  border-color: rgba(16, 185, 129, 0.35) !important;
+}
+
+.mat-mdc-snack-bar-container.snack-success .mdc-snackbar__label {
+  color: #ecfdf5 !important;
+}
+
+.mat-mdc-snack-bar-container.snack-success .mdc-button__label {
+  color: #a7f3d0 !important;
+}
+
+/* ERROR look */
+.mat-mdc-snack-bar-container.snack-error .mdc-snackbar__surface {
+  background: rgba(239, 68, 68, 0.12) !important; /* red glass */
+  border-color: rgba(239, 68, 68, 0.35) !important;
+}
+
+.mat-mdc-snack-bar-container.snack-error .mdc-snackbar__label {
+  color: #fff1f2 !important;
+}
+
+.mat-mdc-snack-bar-container.snack-error .mdc-button__label {
+  color: #fecaca !important;
+}
+
+/* Slight emphasis animation */
+@keyframes snack-pop {
+  from {
+    transform: translateY(6px) scale(0.98);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+.mat-mdc-snack-bar-container.snack-success .mdc-snackbar__surface,
+.mat-mdc-snack-bar-container.snack-error .mdc-snackbar__surface {
+  animation: snack-pop 180ms ease-out;
+}
+
+
 
 
 

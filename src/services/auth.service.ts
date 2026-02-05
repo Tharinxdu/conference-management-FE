@@ -102,10 +102,12 @@ export class AuthService {
       );
   }
 
-  resetPassword(payload: ResetPasswordRequest): Observable<void> {
+  resetPassword(payload: ResetPasswordRequest): Observable<string> {
     return this.http
-      .post<void>(`${this.baseUrl}/reset-password`, payload, { withCredentials: true })
-      .pipe(map(() => void 0));
+      .post<{ message: string }>(`${this.baseUrl}/reset-password`, payload, { withCredentials: true })
+      .pipe(
+        map((res) => res?.message || 'Password has been reset successfully.')
+      );
   }
 
   /** Single source of truth for post-auth redirects. */

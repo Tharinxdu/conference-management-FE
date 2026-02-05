@@ -1,3 +1,5 @@
+<!-- FILE: src/abstract/abstract-dashboard/abstract-dashboard.html -->
+
 <app-page-shell [title]="'Abstract Dashboard'" [subtitle]="'Manage submitted abstracts'">
   <!-- Header right actions -->
   <div headerRight class="header-actions">
@@ -40,7 +42,9 @@
         Refresh
       </button>
 
+      <!-- ✅ Show "+ New Abstract" ONLY if there is at least one "submitted" abstract -->
       <button
+        *ngIf="showToolbarNewAbstractButton"
         class="primary-button"
         type="button"
         (click)="openCreate()"
@@ -48,6 +52,18 @@
         [title]="!hasProfile ? 'Complete your profile first' : ''"
       >
         + New Abstract
+      </button>
+
+      <!-- ✅ If there are abstracts but NONE are "submitted", show "Create Abstract" instead -->
+      <button
+        *ngIf="showToolbarCreateAbstractButton"
+        class="primary-button"
+        type="button"
+        (click)="openCreate()"
+        [disabled]="loading || savingBusy || profileChecking || profileGateOpen || !hasProfile"
+        [title]="!hasProfile ? 'Complete your profile first' : ''"
+      >
+        Create Abstract
       </button>
     </div>
   </div>
@@ -113,7 +129,6 @@
             {{ statusLabel(a) }}
           </span>
 
-          <!-- Optional tiny lock hint (no CSS required, but looks nice if you style it) -->
           <span
             *ngIf="isLocked(a)"
             class="chip chip--lock"
@@ -192,7 +207,7 @@
 
       <div class="confirm-modal__body">
         <p>
-          This will permanently delete:
+          This action will totally delete the abstract:
           <strong>{{ confirmTarget?.abstractTitle || 'Untitled Abstract' }}</strong>
         </p>
         <p class="muted">You can’t undo this action.</p>

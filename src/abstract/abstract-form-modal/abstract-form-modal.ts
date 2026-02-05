@@ -1,3 +1,5 @@
+// FILE: src/abstract/abstract-form-modal/abstract-form-modal.ts
+
 import {
   Component,
   EventEmitter,
@@ -9,9 +11,12 @@ import {
   Output,
   SimpleChanges,
   ChangeDetectorRef,
+  ElementRef,
+  NgZone,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 import {
   AbstractDTO,
@@ -57,7 +62,7 @@ type AbstractFormShape = {
 @Component({
   selector: 'app-abstract-form-modal',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, MatSnackBarModule],
   templateUrl: './abstract-form-modal.html',
   styleUrl: './abstract-form-modal.scss',
 })
@@ -107,11 +112,45 @@ export class AbstractFormModal implements OnInit, OnChanges, OnDestroy {
     'OTHER',
   ];
 
+  // ✅ Order used to scroll to the first invalid field on submit
+  private readonly fieldOrder: (keyof AbstractFormShape)[] = [
+    'presentingAuthorName',
+    'correspondingAuthorName',
+    'correspondingAuthorEmail',
+    'abstractTitle',
+    'preferredPresentationTypes',
+    'scientificCategories',
+    'otherCategoryText',
+    'abstractText',
+    'keywordsInput',
+    'coAuthorsRaw',
+    'decl_originalWork',
+    'decl_authorsApproved',
+    'decl_agreeProceedings',
+  ];
+
   constructor(
     private fb: FormBuilder,
     private abstracts: AbstractsService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private snack: MatSnackBar,
+    private host: ElementRef<HTMLElement>,
+    private zone: NgZone
   ) {}
+
+  private toastSuccess(message: string, duration = 6500): void {
+    this.snack.open(message, 'OK', {
+      duration,
+      panelClass: ['snack-success'],
+    });
+  }
+
+  private toastError(message: string, duration = 9500): void {
+    this.snack.open(message, 'Dismiss', {
+      duration,
+      panelClass: ['snack-error'],
+    });
+  }
 
   private mark(): void {
     if (this.destroyed) return;
@@ -119,19 +158,18 @@ export class AbstractFormModal implements OnInit, OnChanges, OnDestroy {
   }
 
   ngOnInit(): void {
-  this.buildForm();
-  this.wireReactiveBehaviors();
+    this.buildForm();
+    this.wireReactiveBehaviors();
 
-  // ✅ If modal is created already open (common with *ngIf),
-  // ngOnChanges ran before the form existed, so we must open here.
-  if (this.open && !this.openedOnce) {
-    this.openedOnce = true;
-    this.onOpen();
+    // ✅ If modal is created already open (common with *ngIf),
+    // ngOnChanges ran before the form existed, so we must open here.
+    if (this.open && !this.openedOnce) {
+      this.openedOnce = true;
+      this.onOpen();
+    }
+
+    this.mark();
   }
-
-  this.mark();
-}
-
 
   ngOnChanges(changes: SimpleChanges): void {
     if (!this.form) return;
@@ -239,10 +277,9 @@ export class AbstractFormModal implements OnInit, OnChanges, OnDestroy {
     ctrl.updateValueAndValidity({ emitEvent: false });
   }
 
+  // ✅ Do NOT close when clicking outside (overlay)
   onOverlayClick(): void {
-    if (!this.open) return;
-    if (this.saving) return;
-    this.mode === 'view' ? this.onClose() : this.onCancel();
+    return;
   }
 
   @HostListener('document:keydown', ['$event'])
@@ -251,8 +288,9 @@ export class AbstractFormModal implements OnInit, OnChanges, OnDestroy {
     if (this.saving) return;
     if (event.key !== 'Escape') return;
 
+    // ✅ Do NOT close on ESC (only close via close button)
     event.preventDefault();
-    this.mode === 'view' ? this.onClose() : this.onCancel();
+    return;
   }
 
   onClose(): void {
@@ -278,6 +316,110 @@ export class AbstractFormModal implements OnInit, OnChanges, OnDestroy {
   }
 
   /* -----------------------------
+   * ✅ Scroll to first invalid field on submit
+   * ----------------------------- */
+
+  private getFirstInvalidKey(): keyof AbstractFormShape | null {
+    // Special: if keywords array invalid, scroll to keywordsInput (visible control)
+    if (this.form?.controls?.keywords?.invalid) return 'keywordsInput';
+
+    for (const key of this.fieldOrder) {
+      const c = this.form.controls[key];
+      if (!c) continue;
+
+      // Other category only matters if OTHER selected
+      if (key === 'otherCategoryText') {
+        if (this.form.controls.otherCategoryText.invalid) return 'otherCategoryText';
+        continue;
+      }
+
+      // Arrays (presentation/category) might be rendered as custom UI; still try to anchor them
+      if (key === 'preferredPresentationTypes') {
+        if (this.form.controls.preferredPresentationTypes.invalid) return 'preferredPresentationTypes';
+        continue;
+      }
+
+      if (key === 'scientificCategories') {
+        if (this.form.controls.scientificCategories.invalid) return 'scientificCategories';
+        continue;
+      }
+
+      if (c.invalid) return key;
+    }
+    return null;
+  }
+
+  private scrollToField(key: keyof AbstractFormShape): void {
+    if (this.destroyed) return;
+
+    this.zone.runOutsideAngular(() => {
+      requestAnimationFrame(() => {
+        const root = this.host.nativeElement;
+
+        // Optional anchors (recommended in template):
+        // <section data-control="preferredPresentationTypes">...</section>
+        const anchored =
+          root.querySelector(`[data-control="${String(key)}"]`) as HTMLElement | null;
+
+        const byFormControlName =
+          (root.querySelector(
+            `[formControlName="${String(key)}"]`
+          ) as HTMLElement | null) ||
+          (root.querySelector(
+            `[formcontrolname="${String(key)}"]`
+          ) as HTMLElement | null);
+
+        // Keywords: visible input is keywordsInput; array control is keywords
+        const resolvedEl =
+          anchored ||
+          byFormControlName ||
+          (root.querySelector(
+            `[name="${String(key)}"]`
+          ) as HTMLElement | null);
+
+        if (!resolvedEl) return;
+
+        // Prefer a modal-body scroll container if you have one
+        const scrollContainer =
+          (root.querySelector('[data-scroll-container]') as HTMLElement | null) ||
+          (root.querySelector('.modal__body') as HTMLElement | null) ||
+          null;
+
+        if (scrollContainer) {
+          const elRect = resolvedEl.getBoundingClientRect();
+          const scRect = scrollContainer.getBoundingClientRect();
+          const top = elRect.top - scRect.top + scrollContainer.scrollTop;
+          scrollContainer.scrollTo({
+            top: Math.max(0, top - 20),
+            behavior: 'smooth',
+          });
+        } else {
+          resolvedEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        const focusable =
+          (resolvedEl.matches('input,select,textarea,button')
+            ? (resolvedEl as HTMLElement)
+            : (resolvedEl.querySelector(
+                'input,select,textarea,button'
+              ) as HTMLElement | null)) || null;
+
+        try {
+          focusable?.focus({ preventScroll: true } as any);
+        } catch {
+          // ignore
+        }
+      });
+    });
+  }
+
+  private scrollToFirstInvalid(): void {
+    const key = this.getFirstInvalidKey();
+    if (!key) return;
+    this.scrollToField(key);
+  }
+
+  /* -----------------------------
    * ✅ Hydration helpers (fix view/edit not populating)
    * ----------------------------- */
 
@@ -287,8 +429,12 @@ export class AbstractFormModal implements OnInit, OnChanges, OnDestroy {
     const anyDto: any = dto as any;
 
     // Common omissions in list endpoints: abstractText, keywords, coAuthorsRaw, attachments details
-    const hasText = typeof anyDto.abstractText === 'string' && anyDto.abstractText.trim().length > 0;
-    const hasTitle = typeof anyDto.abstractTitle === 'string' && anyDto.abstractTitle.trim().length > 0;
+    const hasText =
+      typeof anyDto.abstractText === 'string' &&
+      anyDto.abstractText.trim().length > 0;
+    const hasTitle =
+      typeof anyDto.abstractTitle === 'string' &&
+      anyDto.abstractTitle.trim().length > 0;
 
     const ppt = anyDto.preferredPresentationTypes;
     const cats = anyDto.scientificCategories;
@@ -395,6 +541,7 @@ export class AbstractFormModal implements OnInit, OnChanges, OnDestroy {
           this.loading = false;
           this.loadError = this.readApiError(err) || 'Failed to load abstract.';
           this.statusLine = this.loadError;
+          this.toastError(this.loadError);
           this.applyModeRules();
           this.mark();
         },
@@ -509,9 +656,15 @@ export class AbstractFormModal implements OnInit, OnChanges, OnDestroy {
     this.form.controls.decl_authorsApproved.setValidators(v);
     this.form.controls.decl_agreeProceedings.setValidators(v);
 
-    this.form.controls.decl_originalWork.updateValueAndValidity({ emitEvent: false });
-    this.form.controls.decl_authorsApproved.updateValueAndValidity({ emitEvent: false });
-    this.form.controls.decl_agreeProceedings.updateValueAndValidity({ emitEvent: false });
+    this.form.controls.decl_originalWork.updateValueAndValidity({
+      emitEvent: false,
+    });
+    this.form.controls.decl_authorsApproved.updateValueAndValidity({
+      emitEvent: false,
+    });
+    this.form.controls.decl_agreeProceedings.updateValueAndValidity({
+      emitEvent: false,
+    });
   }
 
   private resetFormToBlank(): void {
@@ -544,10 +697,13 @@ export class AbstractFormModal implements OnInit, OnChanges, OnDestroy {
       {
         presentingAuthorName: (dto as any).presentingAuthorName || '',
         correspondingAuthorName: (dto as any).correspondingAuthorName || '',
-        correspondingAuthorEmail: (dto as any).correspondingAuthorEmail || '',
+        correspondingAuthorEmail:
+          (dto as any).correspondingAuthorEmail || '',
         abstractTitle: (dto as any).abstractTitle || '',
-        preferredPresentationTypes: ((dto as any).preferredPresentationTypes || []) as PreferredPresentationType[],
-        scientificCategories: ((dto as any).scientificCategories || []) as ScientificCategory[],
+        preferredPresentationTypes: ((dto as any).preferredPresentationTypes ||
+          []) as PreferredPresentationType[],
+        scientificCategories: ((dto as any).scientificCategories ||
+          []) as ScientificCategory[],
         otherCategoryText: (dto as any).otherCategoryText || '',
         abstractText: (dto as any).abstractText || '',
         keywords: ((dto as any).keywords || []) as string[],
@@ -613,7 +769,9 @@ export class AbstractFormModal implements OnInit, OnChanges, OnDestroy {
     const next = current.filter((x) => x !== k);
     this.form.controls.keywords.setValue(next, { emitEvent: true });
     this.form.controls.keywords.markAsTouched();
-    this.form.controls.keywordsInput.setValue(next.join(', '), { emitEvent: false });
+    this.form.controls.keywordsInput.setValue(next.join(', '), {
+      emitEvent: false,
+    });
     this.mark();
   }
 
@@ -653,10 +811,15 @@ export class AbstractFormModal implements OnInit, OnChanges, OnDestroy {
     const currentNew = this.newFiles.length;
     const maxAllowed = 5;
 
-    const availableSlots = Math.max(0, maxAllowed - (effectiveExisting + currentNew));
+    const availableSlots = Math.max(
+      0,
+      maxAllowed - (effectiveExisting + currentNew)
+    );
     if (availableSlots <= 0) {
-      this.filesError = 'You already have 5 attachments. Remove one before adding more.';
+      this.filesError =
+        'You already have 5 attachments. Remove one before adding more.';
       input.value = '';
+      this.toastError(this.filesError);
       this.mark();
       return;
     }
@@ -669,6 +832,7 @@ export class AbstractFormModal implements OnInit, OnChanges, OnDestroy {
     if (bad) {
       this.filesError = 'Only PDF, DOC, or DOCX files are allowed.';
       input.value = '';
+      this.toastError(this.filesError);
       this.mark();
       return;
     }
@@ -677,6 +841,7 @@ export class AbstractFormModal implements OnInit, OnChanges, OnDestroy {
 
     if (rejected) {
       this.filesError = `Only ${availableSlots} file(s) were added (max 5 total).`;
+      this.toastError(this.filesError);
     }
 
     input.value = '';
@@ -690,7 +855,9 @@ export class AbstractFormModal implements OnInit, OnChanges, OnDestroy {
   }
 
   openAttachment(a: AttachmentDTO): void {
-    const url = (a as any).url || this.abstracts.buildAttachmentUrl((a as any).storedName);
+    const url =
+      (a as any).url ||
+      this.abstracts.buildAttachmentUrl((a as any).storedName);
     window.open(url, '_blank', 'noopener');
   }
 
@@ -724,14 +891,22 @@ export class AbstractFormModal implements OnInit, OnChanges, OnDestroy {
     if (this.abstractWordCount > 300) {
       this.statusLine = 'Abstract text must be 300 words or less.';
       this.form.controls.abstractText.markAsTouched();
+      this.toastError(this.statusLine);
       this.mark();
+
+      // ✅ Scroll to the field
+      this.scrollToField('abstractText');
       return;
     }
 
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       this.statusLine = 'Please fix the highlighted errors.';
+      this.toastError(this.statusLine);
       this.mark();
+
+      // ✅ Scroll to first invalid field
+      this.scrollToFirstInvalid();
       return;
     }
 
@@ -741,6 +916,7 @@ export class AbstractFormModal implements OnInit, OnChanges, OnDestroy {
       const id = this.abstractId || this.getId(this.loaded);
       if (!id) {
         this.statusLine = 'Missing abstract id.';
+        this.toastError(this.statusLine);
         this.mark();
         return;
       }
@@ -780,13 +956,16 @@ export class AbstractFormModal implements OnInit, OnChanges, OnDestroy {
         next: (dto) => {
           this.saving = false;
           this.statusLine = 'Submitted successfully.';
+          this.toastSuccess('Abstract submitted successfully.');
           this.saved.emit(dto);
           this.onClose();
           this.mark();
         },
         error: (err) => {
           this.saving = false;
-          this.statusLine = this.readApiError(err) || 'Failed to submit abstract.';
+          this.statusLine =
+            this.readApiError(err) || 'Failed to submit abstract.';
+          this.toastError(this.statusLine);
           this.mark();
         },
       });
@@ -825,13 +1004,16 @@ export class AbstractFormModal implements OnInit, OnChanges, OnDestroy {
         next: (dto) => {
           this.saving = false;
           this.statusLine = 'Saved.';
+          this.toastSuccess('Changes saved.');
           this.saved.emit(dto);
           this.onClose();
           this.mark();
         },
         error: (err) => {
           this.saving = false;
-          this.statusLine = this.readApiError(err) || 'Failed to save changes.';
+          this.statusLine =
+            this.readApiError(err) || 'Failed to save changes.';
+          this.toastError(this.statusLine);
           this.mark();
         },
       });
@@ -870,7 +1052,8 @@ export class AbstractFormModal implements OnInit, OnChanges, OnDestroy {
         : '';
     }
     if (c.errors?.['required']) return 'Abstract text is required.';
-    if (this.abstractWordCount > 300) return 'Abstract text must be 300 words or less.';
+    if (this.abstractWordCount > 300)
+      return 'Abstract text must be 300 words or less.';
     return '';
   }
 
@@ -915,7 +1098,9 @@ export class AbstractFormModal implements OnInit, OnChanges, OnDestroy {
 
   private getId(dto?: AbstractDTO | null): string | undefined {
     if (!dto) return undefined;
-    return ((dto as any).id || (dto as any)._id || undefined) as string | undefined;
+    return ((dto as any).id || (dto as any)._id || undefined) as
+      | string
+      | undefined;
   }
 
   private readApiError(err: any): string {

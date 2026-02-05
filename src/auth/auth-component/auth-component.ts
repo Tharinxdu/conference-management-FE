@@ -1,7 +1,8 @@
 /* FILE: auth-component.ts */
 
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, signal, ChangeDetectionStrategy } from '@angular/core';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import {
   AbstractControl,
   FormBuilder,
@@ -10,7 +11,7 @@ import {
   ValidationErrors,
   Validators,
 } from '@angular/forms';
-import { Router, RouterModule } from '@angular/router';
+import { ActivatedRoute, ParamMap, Router, RouterModule } from '@angular/router';
 import { Subject, takeUntil, finalize } from 'rxjs';
 import { AuthService } from '../../services/auth.service';
 import { RegisterRequest } from '../../services/auth.types';
@@ -22,9 +23,10 @@ type FormScope = 'login' | 'register' | 'forgot';
 @Component({
   selector: 'app-auth-component',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule, PageShell],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, PageShell, MatSnackBarModule],
   templateUrl: './auth-component.html',
   styleUrl: './auth-component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AuthComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
@@ -36,6 +38,8 @@ export class AuthComponent implements OnInit, OnDestroy {
   registerLoading = signal(false);
   forgotLoading = signal(false);
 
+  // You can keep these if you still show them in HTML,
+  // but going forward prefer snackbar.
   loginStatus = signal('');
   registerStatus = signal('');
   forgotStatus = signal('');
@@ -46,18 +50,6 @@ export class AuthComponent implements OnInit, OnDestroy {
   showLoginPassword = signal(false);
   showRegisterPassword = signal(false);
   showRegisterConfirmPassword = signal(false);
-
-  toggleLoginPassword(): void {
-    this.showLoginPassword.update((v) => !v);
-  }
-
-  toggleRegisterPassword(): void {
-    this.showRegisterPassword.update((v) => !v);
-  }
-
-  toggleRegisterConfirmPassword(): void {
-    this.showRegisterConfirmPassword.update((v) => !v);
-  }
 
   // Attempts (signals so template updates)
   private loginAttempted = signal(false);
@@ -72,7 +64,9 @@ export class AuthComponent implements OnInit, OnDestroy {
   constructor(
     private readonly fb: FormBuilder,
     private readonly auth: AuthService,
-    private readonly router: Router
+    private readonly router: Router,
+    private readonly route: ActivatedRoute,
+    private readonly snack: MatSnackBar
   ) {
     this.loginForm = this.fb.group({
       email: ['', [Validators.required, Validators.email]],
@@ -94,6 +88,28 @@ export class AuthComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    // ✅ Show snackbar messages passed from other routes (e.g., reset-password success)
+    this.route.queryParamMap
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((qm: ParamMap) => {
+        const snackKey = qm.get('snack');
+        if (!snackKey) return;
+
+        if (snackKey === 'reset-success') {
+          this.toastSuccess('Password updated. Please log in.');
+          this.activeTab.set('loginTab');
+          this.closeForgotModal();
+        }
+
+        // remove query param so it doesn't show again on refresh
+        this.router.navigate([], {
+          relativeTo: this.route,
+          queryParams: { snack: null },
+          queryParamsHandling: 'merge',
+          replaceUrl: true,
+        });
+      });
+
     // If already logged in and user hits /auth, redirect away
     this.auth
       .me()
@@ -106,6 +122,19 @@ export class AuthComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  // Password toggles
+  toggleLoginPassword(): void {
+    this.showLoginPassword.update((v) => !v);
+  }
+
+  toggleRegisterPassword(): void {
+    this.showRegisterPassword.update((v) => !v);
+  }
+
+  toggleRegisterConfirmPassword(): void {
+    this.showRegisterConfirmPassword.update((v) => !v);
   }
 
   setTab(tab: TabKey): void {
@@ -139,7 +168,7 @@ export class AuthComponent implements OnInit, OnDestroy {
 
     if (this.loginForm.invalid) {
       this.loginForm.markAllAsTouched();
-      this.loginStatus.set('Please fix the highlighted errors.');
+      this.toastError('Please fix the highlighted errors.');
       return;
     }
 
@@ -149,7 +178,6 @@ export class AuthComponent implements OnInit, OnDestroy {
     };
 
     this.loginLoading.set(true);
-    this.loginStatus.set('Logging in…');
 
     this.auth
       .login({ email, password })
@@ -159,13 +187,11 @@ export class AuthComponent implements OnInit, OnDestroy {
       )
       .subscribe({
         next: (user) => {
-          this.loginStatus.set('Login successful. Redirecting…');
+          this.toastSuccess('Login successful. Redirecting…');
           this.router.navigateByUrl(this.auth.getPostAuthRedirect(user));
         },
         error: (err) => {
-          this.loginStatus.set(
-            this.readApiError(err) || 'Login failed. Please try again.'
-          );
+          this.toastError(this.readApiError(err) || 'Login failed. Please try again.');
         },
       });
   }
@@ -176,19 +202,17 @@ export class AuthComponent implements OnInit, OnDestroy {
 
     if (this.registerForm.invalid) {
       this.registerForm.markAllAsTouched();
-      this.registerStatus.set('Please fix the highlighted errors.');
+      this.toastError('Please fix the highlighted errors.');
       return;
     }
 
-    const { email, password, confirmPassword } =
-      this.registerForm.getRawValue() as {
-        email: string;
-        password: string;
-        confirmPassword: string;
-      };
+    const { email, password, confirmPassword } = this.registerForm.getRawValue() as {
+      email: string;
+      password: string;
+      confirmPassword: string;
+    };
 
     this.registerLoading.set(true);
-    this.registerStatus.set('Creating account…');
 
     const payload: RegisterRequest = { email, password, confirmPassword };
 
@@ -200,19 +224,14 @@ export class AuthComponent implements OnInit, OnDestroy {
       )
       .subscribe({
         next: () => {
-          this.registerStatus.set('Account created. Please log in to continue.');
+          this.toastSuccess('Account created. Please log in to continue.');
 
-          // Switch to login tab
+          // Switch to login tab + prefill email
           this.activeTab.set('loginTab');
+          this.loginForm.get('email')?.setValue(email);
+          this.loginForm.get('email')?.markAsTouched();
 
-          // Prefill login email
-          const loginEmailControl = this.loginForm.get('email');
-          if (loginEmailControl) {
-            loginEmailControl.setValue(email);
-            loginEmailControl.markAsTouched();
-          }
-
-          // Clear password fields
+          // Clear register password fields
           this.registerForm.get('password')?.reset('');
           this.registerForm.get('confirmPassword')?.reset('');
 
@@ -221,9 +240,7 @@ export class AuthComponent implements OnInit, OnDestroy {
           this.showRegisterConfirmPassword.set(false);
         },
         error: (err) => {
-          this.registerStatus.set(
-            this.readApiError(err) || 'Registration failed. Please try again.'
-          );
+          this.toastError(this.readApiError(err) || 'Registration failed. Please try again.');
         },
       });
   }
@@ -234,14 +251,13 @@ export class AuthComponent implements OnInit, OnDestroy {
 
     if (this.forgotForm.invalid) {
       this.forgotForm.markAllAsTouched();
-      this.forgotStatus.set('Please enter a valid email.');
+      this.toastError('Please enter a valid email.');
       return;
     }
 
     const { email } = this.forgotForm.getRawValue() as { email: string };
 
     this.forgotLoading.set(true);
-    this.forgotStatus.set('Sending reset link…');
 
     this.auth
       .forgotPassword({ email })
@@ -250,20 +266,16 @@ export class AuthComponent implements OnInit, OnDestroy {
         finalize(() => this.forgotLoading.set(false))
       )
       .subscribe({
-        next: (message) => {
-          this.forgotStatus.set(
-            message || 'If this email exists, a reset link has been sent.'
-          );
+        next: () => {
+          this.toastSuccess('If this email exists, a reset link has been sent.');
         },
         error: (err) => {
-          this.forgotStatus.set(
-            this.readApiError(err) || 'Failed to send reset link. Please try again.'
-          );
+          this.toastError(this.readApiError(err) || 'Failed to send reset link. Please try again.');
         },
       });
   }
 
-  // --- Error mapping
+  // --- Error mapping (used under inputs)
   errorFor(form: FormGroup, controlName: string, scope: FormScope): string {
     const ctrl = form.get(controlName) as AbstractControl | null;
     if (!ctrl) return '';
@@ -304,5 +316,19 @@ export class AuthComponent implements OnInit, OnDestroy {
 
   private readApiError(err: any): string {
     return err?.error?.message || err?.error?.error || err?.message || '';
+  }
+
+  private toastSuccess(message: string): void {
+    this.snack.open(message, 'OK', {
+      duration: 6500,
+      panelClass: ['snack-success'],
+    });
+  }
+
+  private toastError(message: string): void {
+    this.snack.open(message, 'Dismiss', {
+      duration: 9500,
+      panelClass: ['snack-error'],
+    });
   }
 }
