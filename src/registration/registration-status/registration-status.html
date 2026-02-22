@@ -1,0 +1,202 @@
+<app-page-shell
+  title="APSC 2026 – Payment Status"
+  subtitle="We’re confirming your payment and registration details."
+>
+  <section class="card status-card">
+    <!-- LOADING / PENDING -->
+    <div *ngIf="state === 'loading' || state === 'pending'" class="status-block">
+      <div class="status-head">
+        <div class="status-icon spinner" aria-hidden="true"></div>
+        <div>
+          <h2 class="status-title">
+            {{ state === 'loading' ? 'Checking payment status…' : 'Payment is still processing…' }}
+          </h2>
+          <p class="status-subtitle">
+            Please keep this page open. We’ll update automatically.
+          </p>
+        </div>
+      </div>
+
+      <div class="details-panel">
+        <div class="kv">
+          <span class="k">Payment status</span>
+          <span class="v chip pending">PENDING</span>
+        </div>
+
+        <!-- <div class="kv" *ngIf="onepayTransactionId">
+          <span class="k">OnePay Transaction ID</span>
+          <span class="v mono">{{ onepayTransactionId }}</span>
+        </div> -->
+
+        <div class="kv" *ngIf="rid">
+          <span class="k">Reference</span>
+          <span class="v mono">{{ rid }}</span>
+        </div>
+
+        <p class="hint">
+          If you were charged but this page stays pending, don’t worry —
+          we’ll confirm it shortly. You may also refresh this page.
+        </p>
+      </div>
+
+      <div class="actions">
+        <button type="button" class="secondary-button" (click)="refreshNow()" [disabled]="busy">
+          Refresh now
+        </button>
+        <button type="button" class="link-button" (click)="goToRegistration()">
+          Go back to registration
+        </button>
+      </div>
+
+      <p class="error" *ngIf="errorText">{{ errorText }}</p>
+    </div>
+
+    <!-- SUCCESS -->
+    <div *ngIf="state === 'success'" class="status-block">
+      <div class="status-head">
+        <div class="status-icon success" aria-hidden="true">✓</div>
+        <div>
+          <h2 class="status-title">Payment successful</h2>
+          <p class="status-subtitle">
+            Your registration is confirmed.
+          </p>
+        </div>
+      </div>
+
+      <div class="details-panel" *ngIf="registration">
+        <div class="grid">
+          <div class="kv">
+            <span class="k">Registration ID</span>
+            <span class="v mono strong">{{ registration.registrationId }}</span>
+          </div>
+
+          <div class="kv">
+            <span class="k">Participant</span>
+            <span class="v">
+              {{ registration.title }} {{ registration.firstName }} {{ registration.lastName }}
+            </span>
+          </div>
+
+          <div class="kv">
+            <span class="k">Email</span>
+            <span class="v mono">{{ registration.email }}</span>
+          </div>
+
+          <div class="kv">
+            <span class="k">Country</span>
+            <span class="v">{{ registration.country }}</span>
+          </div>
+
+          <div class="kv">
+            <span class="k">Category</span>
+            <span class="v">{{ prettyCategory(registration.participantCategory) }}</span>
+          </div>
+
+          <div class="kv">
+            <span class="k">Conference</span>
+            <span class="v">{{ prettyConference(registration.conferenceType) }}</span>
+          </div>
+
+          <div class="kv">
+            <span class="k">Fee</span>
+            <span class="v strong">USD {{ registration.feeAmount }}</span>
+          </div>
+
+          <div class="kv" *ngIf="paidAt">
+            <span class="k">Paid at</span>
+            <span class="v mono">{{ paidAt | date:'medium' }}</span>
+          </div>
+
+          <!-- <div class="kv" *ngIf="onepayTransactionId">
+            <span class="k">OnePay Transaction ID</span>
+            <span class="v mono">{{ onepayTransactionId }}</span>
+          </div> -->
+        </div>
+
+        <div class="success-note">
+          <p>
+             A confirmation email and your QR code have been sent to
+            <strong>{{ registration.email }}</strong>.
+          </p>
+          <p class="muted">
+            Please check your inbox and spam/junk folder.
+          </p>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button type="button" class="primary-button" (click)="goToRegistration()">
+          Back to registration page
+        </button>
+      </div>
+    </div>
+
+    <!-- FAILED -->
+    <div *ngIf="state === 'failed'" class="status-block">
+      <div class="status-head">
+        <div class="status-icon failed" aria-hidden="true">!</div>
+        <div>
+          <h2 class="status-title">Payment failed</h2>
+          <p class="status-subtitle">
+            Your payment was not completed. You can try again.
+          </p>
+        </div>
+      </div>
+
+      <div class="details-panel">
+        <div class="kv">
+          <span class="k">Payment status</span>
+          <span class="v chip failed">FAILED</span>
+        </div>
+
+        <!-- <div class="kv" *ngIf="onepayTransactionId">
+          <span class="k">OnePay Transaction ID</span>
+          <span class="v mono">{{ onepayTransactionId }}</span>
+        </div> -->
+
+        <p class="error" *ngIf="lastError">
+          Reason: {{ lastError }}
+        </p>
+
+        <p class="hint">
+          If you believe this is a mistake, you may retry payment from the registration page.
+        </p>
+      </div>
+
+      <div class="actions">
+        <button type="button" class="primary-button" (click)="goToRegistration()">
+          Register again
+        </button>
+
+        <button type="button" class="secondary-button" (click)="goToRegistration()">
+          Retry payment
+        </button>
+      </div>
+    </div>
+
+    <!-- MISSING RID -->
+    <div *ngIf="state === 'missing'" class="status-block">
+      <div class="status-head">
+        <div class="status-icon failed" aria-hidden="true">!</div>
+        <div>
+          <h2 class="status-title">Missing reference</h2>
+          <p class="status-subtitle">
+            We couldn’t find your registration reference in the link.
+          </p>
+        </div>
+      </div>
+
+      <div class="details-panel">
+        <p class="hint">
+          Please return to the registration page and try again.
+        </p>
+      </div>
+
+      <div class="actions">
+        <button type="button" class="primary-button" (click)="goToRegistration()">
+          Go to registration
+        </button>
+      </div>
+    </div>
+  </section>
+</app-page-shell>
