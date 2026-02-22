@@ -18,7 +18,17 @@ export const routes: Routes = [
       import('../auth/reset-password/reset-password').then((m) => m.ResetPasswordComponent),
   },
 
+  // Registration form page
   { path: 'registration', component: Registration },
+
+  // ✅ OnePay redirect/return page (payment status page)
+  {
+    path: 'registration-status',
+    loadComponent: () =>
+      import('../registration/registration-status/registration-status').then(
+        (m) => m.RegistrationStatus
+      ),
+  },
 
   {
     path: 'abstract-dashboard',
