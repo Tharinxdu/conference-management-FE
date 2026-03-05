@@ -3,23 +3,12 @@
 <app-page-shell [title]="'Abstract Dashboard'" [subtitle]="'Manage submitted abstracts'">
   <!-- Header right actions -->
   <div headerRight class="header-actions">
-    <button
-      class="secondary-button"
-      type="button"
-      (click)="openProfileEdit()"
-      [disabled]="profileChecking || savingBusy || profileGateOpen"
-      aria-label="Open profile"
-      title="Profile"
-    >
+    <button class="secondary-button" type="button" (click)="openProfileEdit()"
+      [disabled]="profileChecking || savingBusy || profileGateOpen" aria-label="Open profile" title="Profile">
       👤
     </button>
 
-    <button
-      class="secondary-button"
-      type="button"
-      (click)="logout()"
-      [disabled]="profileChecking || savingBusy"
-    >
+    <button class="secondary-button" type="button" (click)="logout()" [disabled]="profileChecking || savingBusy">
       Logout
     </button>
   </div>
@@ -33,36 +22,22 @@
     </div>
 
     <div class="toolbar__right">
-      <button
-        class="secondary-button"
-        type="button"
-        (click)="reload()"
-        [disabled]="loading || savingBusy || profileChecking || profileGateOpen"
-      >
+      <button class="secondary-button" type="button" (click)="reload()"
+        [disabled]="loading || savingBusy || profileChecking || profileGateOpen">
         Refresh
       </button>
 
       <!-- ✅ Show "+ New Abstract" ONLY if there is at least one "submitted" abstract -->
-      <button
-        *ngIf="showToolbarNewAbstractButton"
-        class="primary-button"
-        type="button"
-        (click)="openCreate()"
+      <button *ngIf="showToolbarNewAbstractButton" class="primary-button" type="button" (click)="openCreate()"
         [disabled]="loading || savingBusy || profileChecking || profileGateOpen || !hasProfile"
-        [title]="!hasProfile ? 'Complete your profile first' : ''"
-      >
+        [title]="!hasProfile ? 'Complete your profile first' : ''">
         + New Abstract
       </button>
 
       <!-- ✅ If there are abstracts but NONE are "submitted", show "Create Abstract" instead -->
-      <button
-        *ngIf="showToolbarCreateAbstractButton"
-        class="primary-button"
-        type="button"
-        (click)="openCreate()"
+      <button *ngIf="showToolbarCreateAbstractButton" class="primary-button" type="button" (click)="openCreate()"
         [disabled]="loading || savingBusy || profileChecking || profileGateOpen || !hasProfile"
-        [title]="!hasProfile ? 'Complete your profile first' : ''"
-      >
+        [title]="!hasProfile ? 'Complete your profile first' : ''">
         Create Abstract
       </button>
     </div>
@@ -101,24 +76,16 @@
     <div class="empty__subtitle">
       Create your first abstract submission and manage updates here.
     </div>
-    <button
-      class="primary-button"
-      type="button"
-      (click)="openCreate()"
+    <button class="primary-button" type="button" (click)="openCreate()"
       [disabled]="profileChecking || profileGateOpen || !hasProfile"
-      [title]="!hasProfile ? 'Complete your profile first' : ''"
-    >
+      [title]="!hasProfile ? 'Complete your profile first' : ''">
       Create Abstract
     </button>
   </div>
 
   <!-- List -->
   <div class="list" *ngIf="!loading && !error && abstracts.length > 0">
-    <div
-      class="card-row"
-      *ngFor="let a of abstracts; trackBy: trackById"
-      [class.card-row--busy]="isDeleting(a)"
-    >
+    <div class="card-row" *ngFor="let a of abstracts; trackBy: trackById" [class.card-row--busy]="isDeleting(a)">
       <div class="card-row__main">
         <div class="title-line">
           <div class="title" [title]="a.abstractTitle || 'Untitled Abstract'">
@@ -129,12 +96,8 @@
             {{ statusLabel(a) }}
           </span>
 
-          <span
-            *ngIf="isLocked(a)"
-            class="chip chip--lock"
-            title="This abstract is locked and can only be viewed."
-            aria-label="Locked"
-          >
+          <span *ngIf="isLocked(a)" class="chip chip--lock" title="This abstract is locked and can only be viewed."
+            aria-label="Locked">
             🔒 Locked
           </span>
         </div>
@@ -162,32 +125,19 @@
       </div>
 
       <div class="card-row__actions">
-        <button
-          class="secondary-button"
-          type="button"
-          (click)="openView(a)"
-          [disabled]="savingBusy || isDeleting(a)"
-        >
+        <button class="secondary-button" type="button" (click)="openView(a)" [disabled]="savingBusy || isDeleting(a)">
           View
         </button>
 
-        <button
-          class="secondary-button"
-          type="button"
-          (click)="openEdit(a)"
+        <button class="secondary-button" type="button" (click)="openEdit(a)"
           [disabled]="savingBusy || isDeleting(a) || isLocked(a)"
-          [title]="isLocked(a) ? 'This abstract is locked. You can only view it.' : 'Edit'"
-        >
+          [title]="isLocked(a) ? 'This abstract is locked. You can only view it.' : 'Edit'">
           Edit
         </button>
 
-        <button
-          class="danger-button"
-          type="button"
-          (click)="askDelete(a)"
+        <button class="danger-button" type="button" (click)="askDelete(a)"
           [disabled]="savingBusy || isDeleting(a) || isLocked(a)"
-          [title]="isLocked(a) ? 'This abstract is locked. You cannot delete it.' : 'Delete'"
-        >
+          [title]="isLocked(a) ? 'This abstract is locked. You cannot delete it.' : 'Delete'">
           <span *ngIf="!isDeleting(a)">Delete</span>
           <span *ngIf="isDeleting(a)">Deleting…</span>
         </button>
@@ -229,13 +179,8 @@
   </div>
 
   <!-- Profile gate / edit modal -->
-  <div
-    class="confirm-overlay"
-    *ngIf="profileGateOpen"
-    role="dialog"
-    aria-modal="true"
-    [attr.aria-label]="profileMode === 'create' ? 'Complete your profile' : 'Edit profile'"
-  >
+  <div class="confirm-overlay" *ngIf="profileGateOpen" role="dialog" aria-modal="true"
+    [attr.aria-label]="profileMode === 'create' ? 'Complete your profile' : 'Edit profile'">
     <!-- (UNCHANGED profile modal content) -->
     <div class="confirm-modal" style="max-width: 720px;">
       <div class="confirm-modal__header">
@@ -243,14 +188,8 @@
           {{ profileMode === 'create' ? 'Complete your profile' : 'Edit profile' }}
         </div>
 
-        <button
-          *ngIf="profileMode === 'edit'"
-          class="icon-x"
-          type="button"
-          (click)="closeProfile()"
-          [disabled]="profileSubmitting"
-          aria-label="Close"
-        >
+        <button *ngIf="profileMode === 'edit'" class="icon-x" type="button" (click)="closeProfile()"
+          [disabled]="profileSubmitting" aria-label="Close">
           ×
         </button>
       </div>
@@ -280,35 +219,33 @@
 
             <label style="display:block;">
               <div style="font-size:12px; opacity:.8; margin-bottom:6px;">Country *</div>
-              <input
-                type="text"
-                formControlName="country"
-                [disabled]="profileMode === 'edit' || profileSubmitting"
-                placeholder="Sri Lanka"
-                style="width:100%;"
-              />
+
+              <select formControlName="country"
+                [disabled]="profileMode === 'edit' || profileSubmitting || countriesLoading" style="width:100%;">
+                <option value="" disabled>Select your country</option>
+
+                <option *ngIf="countriesLoading" disabled>Loading countries…</option>
+
+                <option *ngFor="let c of countries" [value]="c">
+                  {{ c }}
+                </option>
+              </select>
+
+              <div *ngIf="countriesError" style="font-size:12px; color:#ef4444; margin-top:6px;">
+                Failed to load countries. Please refresh.
+              </div>
             </label>
 
             <label style="display:block;">
               <div style="font-size:12px; opacity:.8; margin-bottom:6px;">First name *</div>
-              <input
-                type="text"
-                formControlName="firstName"
-                [disabled]="profileMode === 'edit' || profileSubmitting"
-                placeholder="First name"
-                style="width:100%;"
-              />
+              <input type="text" formControlName="firstName" [disabled]="profileMode === 'edit' || profileSubmitting"
+                placeholder="First name" style="width:100%;" />
             </label>
 
             <label style="display:block;">
               <div style="font-size:12px; opacity:.8; margin-bottom:6px;">Last name *</div>
-              <input
-                type="text"
-                formControlName="lastName"
-                [disabled]="profileMode === 'edit' || profileSubmitting"
-                placeholder="Last name"
-                style="width:100%;"
-              />
+              <input type="text" formControlName="lastName" [disabled]="profileMode === 'edit' || profileSubmitting"
+                placeholder="Last name" style="width:100%;" />
             </label>
 
             <label style="display:block;">
@@ -333,18 +270,14 @@
           </div>
 
           <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:16px;">
-            <button
-              *ngIf="profileMode === 'edit'"
-              class="secondary-button"
-              type="button"
-              (click)="closeProfile()"
-              [disabled]="profileSubmitting"
-            >
+            <button *ngIf="profileMode === 'edit'" class="secondary-button" type="button" (click)="closeProfile()"
+              [disabled]="profileSubmitting">
               Cancel
             </button>
 
             <button class="primary-button" type="submit" [disabled]="profileSubmitting || profileForm.invalid">
-              {{ profileSubmitting ? (profileMode === 'create' ? 'Saving…' : 'Updating…') : (profileMode === 'create' ? 'Save profile' : 'Update profile') }}
+              {{ profileSubmitting ? (profileMode === 'create' ? 'Saving…' : 'Updating…') : (profileMode === 'create' ?
+              'Save profile' : 'Update profile') }}
             </button>
           </div>
         </form>
@@ -353,13 +286,6 @@
   </div>
 
   <!-- Abstract modal -->
-  <app-abstract-form-modal
-    *ngIf="modalOpen"
-    [open]="modalOpen"
-    [mode]="modalMode"
-    [abstractId]="modalAbstractId"
-    [initialData]="modalInitialData"
-    (closed)="closeModal()"
-    (saved)="onModalSaved($event)"
-  />
+  <app-abstract-form-modal *ngIf="modalOpen" [open]="modalOpen" [mode]="modalMode" [abstractId]="modalAbstractId"
+    [initialData]="modalInitialData" (closed)="closeModal()" (saved)="onModalSaved($event)" />
 </app-page-shell>

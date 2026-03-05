@@ -30,6 +30,7 @@ import {
 
 import { PageShell } from '../../page-shell/page-shell';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { HttpClient } from '@angular/common/http';
 
 type ProfileMode = 'create' | 'edit';
 type TitleEnum = 'Dr' | 'Prof' | 'Mr' | 'Ms' | 'Other';
@@ -61,6 +62,10 @@ type ProfileFormModel = {
 })
 export class AbstractDashboard implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
+
+  countries: string[] = [];
+  countriesLoading = false;
+  countriesError: string | null = null;
 
   abstracts: AbstractDTO[] = [];
   loading = false;
@@ -101,7 +106,8 @@ export class AbstractDashboard implements OnInit, OnDestroy {
     private router: Router,
     private fb: FormBuilder,
     private cdr: ChangeDetectorRef,
-    private snack: MatSnackBar
+    private snack: MatSnackBar,
+    private readonly http: HttpClient,
   ) {
     this.profileForm = this.fb.group<ProfileFormModel>({
       title: new FormControl<TitleEnum>('Dr', {
@@ -146,9 +152,11 @@ export class AbstractDashboard implements OnInit, OnDestroy {
     this.auth
       .me()
       .pipe(takeUntil(this.destroy$))
-      .subscribe({ next: () => this.cdr.markForCheck(), error: () => {} });
+      .subscribe({ next: () => this.cdr.markForCheck(), error: () => { } });
 
     this.checkProfileThenLoad();
+
+    this.loadCountries();
   }
 
   ngOnDestroy(): void {
@@ -802,4 +810,31 @@ export class AbstractDashboard implements OnInit, OnDestroy {
       ''
     );
   }
+
+  private loadCountries(): void {
+    this.countriesLoading = true;
+    this.countriesError = null;
+    this.cdr.markForCheck();
+
+    this.http
+      .get<any[]>('https://restcountries.com/v3.1/all?fields=name')
+      .subscribe({
+        next: (data) => {
+          this.countries = (data || [])
+            .map((c: any) => c?.name?.common)
+            .filter(Boolean)
+            .sort((a: string, b: string) => a.localeCompare(b));
+
+          this.countriesLoading = false;
+          this.cdr.markForCheck(); // ✅ forces UI update
+        },
+        error: (err) => {
+          this.countriesError = err?.message || 'Failed to load countries.';
+          this.countries = [];
+          this.countriesLoading = false;
+          this.cdr.markForCheck(); // ✅ forces UI update
+        },
+      });
+  }
+
 }
