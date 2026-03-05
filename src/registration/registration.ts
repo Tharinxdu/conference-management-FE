@@ -355,7 +355,7 @@ export class Registration implements OnInit {
     private readonly http: HttpClient,
     private readonly cdr: ChangeDetectorRef,
     private readonly snack: MatSnackBar
-  ) {}
+  ) { }
 
   private toastSuccess(message: string): void {
     this.snack.open(message, 'OK', {
@@ -635,7 +635,28 @@ export class Registration implements OnInit {
       .post<any>(`${this.apiUrl}/registrations`, payload)
       .pipe(
         catchError((err) => {
-          const msg = err?.error?.message || err?.message || 'Failed to submit registration.';
+          const status = err?.status;
+          const msg =
+            err?.error?.message ||
+            err?.message ||
+            'Failed to submit registration.';
+
+          // ✅ Better UX: email already used (PAID registration)
+          if (status === 409) {
+            this.setError('email', msg);
+            this.formStatus = msg;
+            this.toastError(msg);
+
+            this.submitting = false;
+            this.cdr.markForCheck();
+
+            // ensure UI renders the error before scrolling/focusing
+            setTimeout(() => this.scrollToField('email'), 0);
+
+            return EMPTY;
+          }
+
+          // default
           this.formStatus = msg;
           this.toastError(msg);
           this.submitting = false;
@@ -649,7 +670,8 @@ export class Registration implements OnInit {
         const registrationMongoId = reg?._id;
 
         if (!registrationMongoId) {
-          const msg = 'Registration created but missing registration id. Please contact support.';
+          const msg =
+            'Registration created but missing registration id. Please contact support.';
           this.formStatus = msg;
           this.toastError(msg);
           this.submitting = false;
@@ -662,7 +684,9 @@ export class Registration implements OnInit {
         this.cdr.markForCheck();
 
         this.http
-          .post<any>(`${this.apiUrl}/payments/onepay/initiate`, { registrationMongoId })
+          .post<any>(`${this.apiUrl}/payments/onepay/initiate`, {
+            registrationMongoId,
+          })
           .pipe(
             catchError((err) => {
               const msg =
@@ -687,7 +711,8 @@ export class Registration implements OnInit {
             const redirectUrl = payRes?.redirectUrl;
 
             if (!redirectUrl) {
-              const msg = 'Payment initiation succeeded but no redirect URL was returned.';
+              const msg =
+                'Payment initiation succeeded but no redirect URL was returned.';
               this.formStatus = msg;
               this.toastError(msg);
               this.cdr.markForCheck();
