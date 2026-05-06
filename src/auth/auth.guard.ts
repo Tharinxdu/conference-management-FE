@@ -48,3 +48,18 @@ export const authRedirectGuard: CanActivateFn = () => {
     })
   );
 };
+
+export const staffGuard: CanActivateFn = () => {
+  const auth = inject(AuthService);
+  const router = inject(Router);
+
+  return auth.me().pipe(
+    map((user) => {
+      if (!user) return router.createUrlTree(['/auth']);
+
+      if (user.isStaff || user.isAdmin) return true;
+
+      return router.createUrlTree(['/abstract-dashboard']);
+    })
+  );
+};

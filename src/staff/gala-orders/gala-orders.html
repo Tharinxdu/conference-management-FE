@@ -1,0 +1,220 @@
+<app-page-shell
+  [title]="'Gala Orders'"
+  [subtitle]="'Search paid and unpaid orders and view ticket redemption status per order.'"
+>
+  <div headerRight class="header-actions">
+    <button class="secondary-button" type="button" (click)="refresh()" [disabled]="busy()">
+      Refresh
+    </button>
+  </div>
+
+  <div class="page">
+    <!-- Banners -->
+    <div class="banner-row" *ngIf="errorMsg() as err">
+      <div class="error-banner" role="alert">
+        <div class="error-title">Couldn’t load orders</div>
+        <div class="error-text">{{ err }}</div>
+      </div>
+    </div>
+
+    <div class="toolbar card">
+      <div class="toolbar-row">
+        <div class="search">
+          <input
+            type="text"
+            [value]="query()"
+            (input)="onQuery(($any($event.target).value || ''))"
+            placeholder="Search by buyer name, email, or order ID..."
+            aria-label="Search orders"
+          />
+        </div>
+
+        <div class="filters">
+          <select
+            class="control-select"
+            [value]="statusFilter() || ''"
+            (change)="onStatusFilter($any($event.target).value)"
+            aria-label="Payment status filter"
+          >
+            <option value="">All statuses</option>
+            <option value="PAID">PAID</option>
+            <option value="PENDING">PENDING</option>
+            <option value="FAILED">FAILED</option>
+            <option value="UNPAID">UNPAID</option>
+          </select>
+
+          <select
+            class="control-select"
+            [value]="limit()"
+            (change)="onLimit($any($event.target).value)"
+            aria-label="Rows per page"
+          >
+            <option [value]="10">10</option>
+            <option [value]="25">25</option>
+            <option [value]="50">50</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="mini-hint">
+        Click an order to expand and view individual ticket redemption status.
+      </div>
+    </div>
+
+    <!-- Loading skeleton -->
+    <div class="card table-card" *ngIf="loading()">
+      <div class="sk-row" *ngFor="let _ of [1,2,3,4,5]; trackBy: trackByIndex">
+        <div class="sk sk-a"></div>
+        <div class="sk sk-b"></div>
+        <div class="sk sk-c"></div>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="card table-card" *ngIf="!loading() && orders().length">
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th style="width: 34px;"></th>
+              <th>Buyer</th>
+              <th>Order</th>
+              <th>Tickets</th>
+              <th>Redeemed</th>
+              <th>Remaining</th>
+              <th>Status</th>
+              <th>Paid at</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            <ng-container *ngFor="let o of orders(); trackBy: trackByOrderId">
+              <!-- Row -->
+              <tr class="row" (click)="toggleExpand(o.galaOrderMongoId)" tabindex="0">
+                <td class="chev">
+                  <span class="chev-ic" [class.open]="expandedId() === o.galaOrderMongoId">▾</span>
+                </td>
+
+                <td>
+                  <div class="buyer">
+                    <div class="buyer__name">{{ o.buyerName }}</div>
+                    <div class="buyer__email mono">{{ o.buyerEmail }}</div>
+                  </div>
+                </td>
+
+                <td class="mono">
+                  {{ o.orderId }}
+                </td>
+
+                <td class="mono strong">{{ o.ticketCount }}</td>
+                <td class="mono">{{ o.redeemed }}</td>
+                <td class="mono">{{ o.remaining }}</td>
+
+                <td>
+                  <span class="chip" [class.accent]="o.paymentStatus === 'PAID'" [class.warn]="o.paymentStatus === 'PENDING'"
+                    [class.danger]="o.paymentStatus === 'FAILED'">
+                    {{ o.paymentStatus }}
+                  </span>
+                </td>
+
+                <td class="mono">
+                  {{ o.paidAt ? (o.paidAt | date:'short') : '—' }}
+                </td>
+              </tr>
+
+              <!-- Expanded -->
+              <tr *ngIf="expandedId() === o.galaOrderMongoId">
+                <td colspan="8" class="expand-cell">
+                  <div class="expand-card">
+                    <div class="expand-head">
+                      <div class="expand-title">
+                        Tickets for <span class="mono">{{ o.orderId }}</span>
+                      </div>
+                      <div class="expand-sub">
+                        Total: <span class="mono strong">{{ o.ticketCount }}</span>
+                        · Amount: <span class="mono">{{ o.currency }} {{ o.totalAmount }}</span>
+                      </div>
+                    </div>
+
+                    <!-- Tickets loading -->
+                    <div class="expand-loading" *ngIf="ticketsBusyId() === o.galaOrderMongoId">
+                      <div class="spinner" aria-hidden="true"></div>
+                      <div>Loading tickets…</div>
+                    </div>
+
+                    <!-- Tickets error -->
+                    <div class="expand-error" *ngIf="ticketsErrorId() === o.galaOrderMongoId">
+                      {{ ticketsErrorMsg() }}
+                    </div>
+
+                    <!-- Tickets list -->
+                    <div class="tickets" *ngIf="ticketMap().get(o.galaOrderMongoId) as tickets">
+                      <div class="ticket" *ngFor="let t of tickets; trackBy: trackByTicketId">
+                        <div class="ticket__left">
+                          <div class="ticket__id mono strong">{{ t.ticketId }}</div>
+                          <div class="ticket__meta">
+                            <span class="chip mini" [class.accent]="t.status === 'ACTIVE'" [class.danger]="t.status !== 'ACTIVE'">
+                              {{ t.status }}
+                            </span>
+                            <span class="chip mini" [class.accent]="t.redeemStatus === 'REDEEMED'">
+                              {{ t.redeemStatus }}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div class="ticket__right">
+                          <div class="ticket__line">
+                            Redeemed at:
+                            <span class="mono">{{ t.redeemedAt ? (t.redeemedAt | date:'short') : '—' }}</span>
+                          </div>
+                          <div class="ticket__line">
+                            Redeemed by:
+                            <span class="mono">{{ t.redeemedByEmail || '—' }}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="empty" *ngIf="ticketMap().get(o.galaOrderMongoId)?.length === 0">
+                      <div class="empty__title">No tickets found</div>
+                      <div class="empty__sub">This order has no associated tickets (unexpected).</div>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            </ng-container>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pager">
+        <button class="secondary-button" type="button" (click)="prevPage()" [disabled]="page() <= 1 || busy()">
+          Prev
+        </button>
+
+        <div class="pager__meta">
+          Page <span class="mono">{{ page() }}</span>
+          · Total <span class="mono">{{ total() }}</span>
+        </div>
+
+        <button
+          class="secondary-button"
+          type="button"
+          (click)="nextPage()"
+          [disabled]="busy() || page() * limit() >= total()"
+        >
+          Next
+        </button>
+      </div>
+    </div>
+
+    <!-- Empty -->
+    <div class="card table-card" *ngIf="!loading() && !orders().length">
+      <div class="empty">
+        <div class="empty__title">No orders found</div>
+        <div class="empty__sub">Try adjusting the search or status filter.</div>
+      </div>
+    </div>
+  </div>
+</app-page-shell>

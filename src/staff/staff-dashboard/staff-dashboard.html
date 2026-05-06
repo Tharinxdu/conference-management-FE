@@ -1,0 +1,256 @@
+<!-- FILE: src/staff/staff-dashboard/staff-dashboard.html -->
+
+<div class="layout">
+  <!-- Sidebar -->
+  <aside class="sidebar" aria-label="Staff navigation">
+    <div class="brand">
+      <div class="brand__mark" aria-hidden="true">🎟️</div>
+      <div class="brand__text">
+        <div class="brand__title">APSC Staff</div>
+        <div class="brand__sub">Gala Redemption</div>
+      </div>
+    </div>
+
+    <nav class="nav" role="navigation" aria-label="Sections">
+      <!-- Dashboard -->
+      <button
+        class="nav__item"
+        type="button"
+        [class.active]="active() === 'dashboard'"
+        (click)="setActive('dashboard')"
+      >
+        <span class="nav__icon" aria-hidden="true">📈</span>
+        <span class="nav__label">Dashboard</span>
+      </button>
+
+      <!-- Redeem -->
+      <button
+        class="nav__item"
+        type="button"
+        [class.active]="active() === 'gala-redeem'"
+        (click)="setActive('gala-redeem')"
+      >
+        <span class="nav__icon" aria-hidden="true">✅</span>
+        <span class="nav__label">Redeem Tickets</span>
+      </button>
+
+      <!-- ✅ NEW: Orders -->
+      <button
+        class="nav__item"
+        type="button"
+        [class.active]="active() === 'gala-orders'"
+        (click)="setActive('gala-orders')"
+      >
+        <span class="nav__icon" aria-hidden="true">🧾</span>
+        <span class="nav__label">Orders</span>
+      </button>
+    </nav>
+
+    <div class="sidebar__footer">
+      <div class="hint">
+        Tip: use <span class="kbd">Redeem Tickets</span> on mobile for the best camera UX.
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main" aria-label="Staff content">
+    <!-- Dashboard view -->
+    <ng-container *ngIf="active() === 'dashboard'; else featureView">
+      <div class="page">
+        <div class="page__header">
+          <div class="page__titles">
+            <div class="page__title">Gala Dinner Dashboard</div>
+            <div class="page__subtitle">Redemption overview and operational metrics</div>
+          </div>
+
+          <div class="header-actions">
+            <button
+              class="secondary-button"
+              type="button"
+              (click)="refresh()"
+              [disabled]="busy()"
+              aria-label="Refresh dashboard"
+            >
+              Refresh
+            </button>
+
+            <button
+              class="secondary-button"
+              type="button"
+              (click)="logout()"
+              [disabled]="busy()"
+              aria-label="Logout"
+            >
+              Logout
+            </button>
+          </div>
+        </div>
+
+        <div class="dash" *ngIf="stats$ | async as vm">
+          <!-- Error -->
+          <div class="banner-row" *ngIf="vm.error as err">
+            <div class="error-banner" role="alert">
+              <div class="error-title">Couldn’t load dashboard</div>
+              <div class="error-text">{{ err }}</div>
+            </div>
+          </div>
+
+          <!-- Skeleton -->
+          <div class="grid" *ngIf="vm.loading">
+            <div class="metric sk" *ngFor="let _ of [1,2,3,4,5,6,7,8]; trackBy: trackByIndex">
+              <div class="sk__top"></div>
+              <div class="sk__mid"></div>
+              <div class="sk__bot"></div>
+            </div>
+          </div>
+
+          <!-- Data -->
+          <ng-container *ngIf="!vm.loading && !vm.error && vm.data as d">
+            <div class="meta-row">
+              <div class="meta-pill">
+                <span class="dot" aria-hidden="true"></span>
+                <span class="meta-text">
+                  Last updated:
+                  <span class="mono">{{ vm.lastUpdatedIso | date : "medium" }}</span>
+                </span>
+              </div>
+
+              <div class="meta-right">
+                <div class="soft">
+                  Redeem rate:
+                  <span class="strong">{{ pct(d.tickets.redeemed, d.tickets.totalPaidIssued) }}</span>
+                </div>
+                <div class="soft">
+                  Remaining:
+                  <span class="strong">{{ compact(d.tickets.remaining) }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="section">
+              <div class="section__title">Tickets</div>
+              <div class="grid">
+                <div class="metric">
+                  <div class="metric__label">Total tickets (paid)</div>
+                  <div class="metric__value">{{ compact(d.tickets.totalPaidIssued) }}</div>
+                  <div class="metric__sub">Expected coupons at venue</div>
+                </div>
+
+                <div class="metric accent">
+                  <div class="metric__label">Redeemed</div>
+                  <div class="metric__value">{{ compact(d.tickets.redeemed) }}</div>
+                  <div class="metric__sub">
+                    {{ pct(d.tickets.redeemed, d.tickets.totalPaidIssued) }} of total
+                  </div>
+                </div>
+
+                <div class="metric">
+                  <div class="metric__label">Remaining</div>
+                  <div class="metric__value">{{ compact(d.tickets.remaining) }}</div>
+                  <div class="metric__sub">Not yet redeemed</div>
+                </div>
+
+                <div class="metric money">
+                  <div class="metric__label">Paid orders</div>
+                  <div class="metric__value">{{ compact(d.orders.paidOrders) }}</div>
+                  <div class="metric__sub">
+                    Partial: <span class="mono">{{ compact(d.orders.partiallyRedeemedOrders) }}</span>
+                    · Full: <span class="mono">{{ compact(d.orders.fullyRedeemedOrders) }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="section">
+              <div class="section__title">Orders status</div>
+              <div class="grid">
+                <div class="metric">
+                  <div class="metric__label">Not redeemed orders</div>
+                  <div class="metric__value">{{ compact(d.orders.notRedeemedOrders) }}</div>
+                  <div class="metric__sub">0 tickets redeemed so far</div>
+                </div>
+
+                <div class="metric accent">
+                  <div class="metric__label">Partially redeemed</div>
+                  <div class="metric__value">{{ compact(d.orders.partiallyRedeemedOrders) }}</div>
+                  <div class="metric__sub">Some tickets redeemed, some remaining</div>
+                </div>
+
+                <div class="metric">
+                  <div class="metric__label">Fully redeemed</div>
+                  <div class="metric__value">{{ compact(d.orders.fullyRedeemedOrders) }}</div>
+                  <div class="metric__sub">All tickets redeemed</div>
+                </div>
+
+                <!-- ✅ Updated quick action card -->
+                <div class="metric">
+                  <div class="metric__label">Quick actions</div>
+                  <div class="metric__value">Tools</div>
+                  <div class="metric__sub">
+                    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:6px;">
+                      <button class="secondary-button" type="button" (click)="setActive('gala-redeem')">
+                        Redeem Tickets
+                      </button>
+                      <button class="secondary-button" type="button" (click)="setActive('gala-orders')">
+                        View Orders
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="section">
+              <div class="section__title">Recent redemptions</div>
+
+              <div class="table-card">
+                <div class="table-wrap" *ngIf="d.recentRedemptions.length; else emptyState">
+                  <table class="table">
+                    <thead>
+                      <tr>
+                        <th>Ticket ID</th>
+                        <th>Order</th>
+                        <th>Buyer</th>
+                        <th>Redeemed at</th>
+                        <th>Redeemed by</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr *ngFor="let r of d.recentRedemptions; trackBy: trackByIndex">
+                        <td class="mono strong">{{ r.ticketId }}</td>
+                        <td class="mono">{{ r.orderId }}</td>
+                        <td>
+                          <div class="buyer">
+                            <div class="buyer__name">{{ r.buyerName }}</div>
+                            <div class="buyer__email mono">{{ r.buyerEmail }}</div>
+                          </div>
+                        </td>
+                        <td class="mono">{{ r.redeemedAt | date : "short" }}</td>
+                        <td class="mono">{{ r.redeemedByEmail || "—" }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <ng-template #emptyState>
+                  <div class="empty">
+                    <div class="empty__title">No redemptions yet</div>
+                    <div class="empty__sub">Once staff start redeeming tickets, you’ll see them here.</div>
+                  </div>
+                </ng-template>
+              </div>
+            </div>
+          </ng-container>
+        </div>
+      </div>
+    </ng-container>
+
+    <!-- Feature views -->
+    <ng-template #featureView>
+      <div class="feature-wrap">
+        <ng-container *ngComponentOutlet="viewComponent()"></ng-container>
+      </div>
+    </ng-template>
+  </main>
+</div>

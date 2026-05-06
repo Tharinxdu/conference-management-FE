@@ -1,6 +1,9 @@
 import { Routes } from '@angular/router';
-import { adminGuard, authGuard, authRedirectGuard } from '../auth/auth.guard';
+import { adminGuard, authGuard, authRedirectGuard, staffGuard } from '../auth/auth.guard';
 import { Registration } from '../registration/registration';
+
+// ✅ NEW: Gala Dinner pages (standalone components)
+import { GalaTickets } from '../gala-tickets/gala-tickets';
 
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'auth' },
@@ -21,13 +24,22 @@ export const routes: Routes = [
   // Registration form page
   { path: 'registration', component: Registration },
 
-  // ✅ OnePay redirect/return page (payment status page)
   {
     path: 'registration-status',
     loadComponent: () =>
       import('../registration/registration-status/registration-status').then(
         (m) => m.RegistrationStatus
       ),
+  },
+
+  // ✅ NEW: Gala Dinner tickets form (PUBLIC - no guards)
+  { path: 'gala-dinner', component: GalaTickets },
+
+  // ✅ NEW: Gala Dinner OnePay redirect/return page (PUBLIC - no guards)
+  {
+    path: 'gala-status',
+    loadComponent: () =>
+      import('../gala-tickets/gala-status/gala-status').then((m) => m.GalaStatus),
   },
 
   {
@@ -44,6 +56,13 @@ export const routes: Routes = [
     canActivate: [authGuard, adminGuard],
     loadComponent: () =>
       import('../admin/admin-dashboard/admin-dashboard').then((m) => m.AdminDashboard),
+  },
+
+  {
+    path: 'staff',
+    canActivate: [authGuard, staffGuard],
+    loadComponent: () =>
+      import('../staff/staff-dashboard/staff-dashboard').then((m) => m.StaffDashboard),
   },
 
   { path: '**', redirectTo: 'auth' },

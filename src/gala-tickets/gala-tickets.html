@@ -1,0 +1,100 @@
+<app-page-shell title="APSC 2026 – Gala Dinner Tickets" subtitle="Purchase Gala Dinner coupons (USD 40 per ticket).">
+  <section class="card" [class.hidden]="cardHidden">
+    <form id="galaForm" novalidate (ngSubmit)="onSubmit()">
+
+      <!-- SECTION: Note -->
+      <section class="form-section is-note" aria-labelledby="sec-note-title">
+        <header class="section-head">
+          <h2 class="section-title" id="sec-note-title">Important Note</h2>
+          <!-- <p class="section-subtitle">
+            After successful payment, you will receive an email containing your ticket QR code(s) and Ticket ID(s).
+          </p> -->
+        </header>
+
+        <div class="note-panel">
+          <p class="note-text">
+            Fill in the form below to attend the Gala Dinner, which will be held at the Sapphire Banquet Hall at BMICH
+            (the venue for APSC 2026), following the Welcome Ceremony on 26th November 2026.
+            Once you submit the form, you will be directed to the payment page. The ticket price is USD 40 per person.
+            You may purchase multiple tickets through this portal.
+            After completing your purchase, you will receive an automated email containing a confirmation code. Please
+            present this code at the registration desk to collect your dinner coupons.
+
+          </p>
+        </div>
+      </section>
+      <!-- SECTION: Buyer Details -->
+      <section class="form-section" aria-labelledby="sec-buyer-title">
+        <header class="section-head">
+          <h2 class="section-title" id="sec-buyer-title">Buyer Details</h2>
+          <p class="section-subtitle">Please enter your details accurately.</p>
+        </header>
+
+        <div class="section-panel">
+          <div class="form-grid">
+            <!-- Name -->
+            <div class="form-group full-width">
+              <label for="name">Full Name <span class="required">*</span></label>
+              <input type="text" id="name" name="name" required [(ngModel)]="name" [disabled]="submitting"
+                placeholder="Your name" />
+              <div class="error-message" data-error-for="name">
+                {{ errorMessages['name'] }}
+              </div>
+            </div>
+
+            <!-- Email -->
+            <div class="form-group">
+              <label for="email">Email Address <span class="required">*</span></label>
+              <input type="email" id="email" name="email" required [(ngModel)]="email" [disabled]="submitting"
+                placeholder="you@example.com" />
+              <div class="error-message" data-error-for="email">
+                {{ errorMessages['email'] }}
+              </div>
+            </div>
+
+            <!-- Ticket Count -->
+            <div class="form-group">
+              <label for="ticketCount">Number of Tickets <span class="required">*</span></label>
+              <input type="number" id="ticketCount" name="ticketCount" required min="1" max="50" step="1"
+                [(ngModel)]="ticketCount" (input)="onTicketCountChange()" [disabled]="submitting" />
+              <div class="error-message" data-error-for="ticketCount">
+                {{ errorMessages['ticketCount'] }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION: Summary -->
+      <section class="form-section is-summary" aria-labelledby="sec-summary-title">
+        <header class="section-head">
+          <h2 class="section-title" id="sec-summary-title">Payment Summary</h2>
+        </header>
+
+        <div class="summary-panel" aria-live="polite">
+          <div class="summary-amount">
+            {{ summaryText }}
+          </div>
+        </div>
+      </section>
+
+
+      <!-- SUBMIT -->
+      <div class="form-actions">
+        <button type="submit" class="primary-button" [disabled]="submitting">
+          {{ submitting ? 'Proceeding…' : 'Proceed to Payment' }}
+        </button>
+
+        <div class="form-status">
+          {{ formStatus }}
+        </div>
+      </div>
+    </form>
+  </section>
+
+  <!-- SUCCESS (optional immediate UI; you will redirect anyway) -->
+  <section class="card success-card" [class.hidden]="!successVisible">
+    <h2 class="section-title">Redirecting to Payment</h2>
+    <p>{{ successDetails }}</p>
+  </section>
+</app-page-shell>

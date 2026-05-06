@@ -1,0 +1,153 @@
+<app-page-shell
+  title="APSC 2026 – Gala Dinner Payment Status"
+  subtitle="We’re confirming your payment and ticket details."
+>
+  <section class="card status-card">
+    <!-- LOADING / PENDING -->
+    <div *ngIf="state === 'loading' || state === 'pending'" class="status-block">
+      <div class="status-head">
+        <div class="status-icon spinner" aria-hidden="true"></div>
+        <div>
+          <h2 class="status-title">Confirming your payment…</h2>
+          <p class="status-subtitle">
+            This may take up <strong>few seconds</strong>. Please keep this page open.
+          </p>
+        </div>
+      </div>
+
+      <div class="details-panel">
+        <div class="kv">
+          <span class="k">Payment status</span>
+          <span class="v chip pending">PENDING</span>
+        </div>
+
+        <div class="kv" *ngIf="gid">
+          <span class="k">Reference</span>
+          <span class="v mono">{{ gid }}</span>
+        </div>
+
+        <p class="error" *ngIf="errorText">{{ errorText }}</p>
+      </div>
+
+      <div class="actions">
+        <button type="button" class="link-button" (click)="goToGalaForm()" [disabled]="busy">
+          Go back
+        </button>
+      </div>
+    </div>
+
+    <!-- SUCCESS -->
+    <div *ngIf="state === 'success'" class="status-block">
+      <div class="status-head">
+        <div class="status-icon success" aria-hidden="true">✓</div>
+        <div>
+          <h2 class="status-title">Payment successful</h2>
+          <p class="status-subtitle">Your Gala Dinner tickets are confirmed.</p>
+        </div>
+      </div>
+
+      <div class="details-panel" *ngIf="order">
+        <div class="grid">
+          <div class="kv">
+            <span class="k">Order ID</span>
+            <span class="v mono strong">{{ order.orderId }}</span>
+          </div>
+
+          <div class="kv">
+            <span class="k">Name</span>
+            <span class="v">{{ order.name }}</span>
+          </div>
+
+          <div class="kv">
+            <span class="k">Email</span>
+            <span class="v mono">{{ order.email }}</span>
+          </div>
+
+          <div class="kv">
+            <span class="k">Tickets</span>
+            <span class="v strong">{{ order.ticketCount }}</span>
+          </div>
+
+          <div class="kv">
+            <span class="k">Total</span>
+            <span class="v strong">USD {{ order.totalAmount }}</span>
+          </div>
+
+          <div class="kv" *ngIf="paidAt">
+            <span class="k">Paid at</span>
+            <span class="v mono">{{ paidAt | date:'medium' }}</span>
+          </div>
+        </div>
+
+        <div class="success-note">
+          <p>
+            Your ticket QR code(s) and Ticket ID(s) have been emailed to
+            <strong>{{ order.email }}</strong>.
+          </p>
+          <p class="muted">Please check your inbox and spam/junk folder.</p>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button type="button" class="primary-button" (click)="goToGalaForm()">
+          Buy more tickets
+        </button>
+      </div>
+    </div>
+
+    <!-- FAILED -->
+    <div *ngIf="state === 'failed'" class="status-block">
+      <div class="status-head">
+        <div class="status-icon failed" aria-hidden="true">!</div>
+        <div>
+          <h2 class="status-title">Payment failed</h2>
+          <p class="status-subtitle">Your payment was not completed. You can try again.</p>
+        </div>
+      </div>
+
+      <div class="details-panel">
+        <div class="kv">
+          <span class="k">Payment status</span>
+          <span class="v chip failed">FAILED</span>
+        </div>
+
+        <p class="error" *ngIf="lastError">Reason: {{ lastError }}</p>
+
+        <p class="hint">
+          Please return to the Gala Dinner Tickets page and try again.
+        </p>
+      </div>
+
+      <div class="actions">
+        <button type="button" class="secondary-button" (click)="goToGalaForm()">
+          Retry
+        </button>
+      </div>
+    </div>
+
+    <!-- MISSING GID -->
+    <div *ngIf="state === 'missing'" class="status-block">
+      <div class="status-head">
+        <div class="status-icon failed" aria-hidden="true">!</div>
+        <div>
+          <h2 class="status-title">Missing reference</h2>
+          <p class="status-subtitle">
+            We couldn’t find your order reference in the link.
+          </p>
+        </div>
+      </div>
+
+      <div class="details-panel">
+        <p class="hint">
+          Please return to the Gala Dinner Tickets page and try again.
+        </p>
+      </div>
+
+      <div class="actions">
+        <button type="button" class="primary-button" (click)="goToGalaForm()">
+          Go to Gala Tickets
+        </button>
+      </div>
+    </div>
+  </section>
+</app-page-shell>

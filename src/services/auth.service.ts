@@ -112,7 +112,9 @@ export class AuthService {
 
   /** Single source of truth for post-auth redirects. */
   getPostAuthRedirect(user: AuthUser): string {
-    return user.isAdmin ? '/admin' : '/abstract-dashboard';
+    if (user.isAdmin) return '/admin';
+    if (user.isStaff) return '/staff';
+    return '/abstract-dashboard';
   }
 
   get currentUser(): AuthUser | null {

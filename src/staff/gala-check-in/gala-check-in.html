@@ -1,0 +1,193 @@
+<app-page-shell [title]="'Gala Dinner – Coupon Check-in'" [subtitle]="'Scan each Gala QR to redeem one coupon'">
+  <div headerRight class="header-actions">
+    <button class="secondary-button" type="button" (click)="clearAll()">Clear</button>
+
+    <button
+      class="secondary-button"
+      type="button"
+      (click)="toggleCamera()"
+      [disabled]="cameraBusy() || tab() !== 'qr'"
+    >
+      {{ cameraOpen() ? "Stop camera" : "Start camera" }}
+    </button>
+  </div>
+
+  <div class="content-wrap">
+    <div class="page">
+      <div class="banner-row" *ngIf="errorMsg() as err">
+        <div class="error-banner" role="alert">
+          <div class="error-title">Something went wrong</div>
+          <div class="error-text">{{ err }}</div>
+        </div>
+      </div>
+
+      <div class="banner-row" *ngIf="infoMsg() as info">
+        <div class="info-banner" role="status">
+          <div class="info-text">{{ info }}</div>
+        </div>
+      </div>
+
+      <div class="toolbar card">
+        <div class="toolbar-row">
+          <div class="tabs" role="tablist" aria-label="Redeem methods">
+            <button class="tab" type="button" [class.active]="tab() === 'qr'" (click)="setTab('qr')">
+              QR Scan
+            </button>
+            <button class="tab" type="button" [class.active]="tab() === 'id'" (click)="setTab('id')">
+              Ticket ID
+            </button>
+          </div>
+          <div class="toolbar-right">
+            <span class="hint-inline" *ngIf="tab() === 'qr'">Scan 1 QR = redeem 1 coupon.</span>
+            <span class="hint-inline" *ngIf="tab() === 'id'">Use when QR is unreadable.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- QR TAB -->
+      <div class="grid" *ngIf="tab() === 'qr'">
+        <div class="card scanner-card">
+          <div class="card-head">
+            <div>
+              <div class="card-title">QR Scanner</div>
+              <div class="card-subtitle">Start camera and scan the Gala ticket QR</div>
+            </div>
+
+            <div class="device" *ngIf="devices().length > 1">
+              <select
+                class="control-select control-select--small"
+                [value]="selectedDeviceId()"
+                (change)="onDeviceChange($any($event.target).value)"
+              >
+                <option *ngFor="let d of devices()" [value]="d.deviceId">{{ d.label }}</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="scanner-surface" [class.off]="!cameraOpen()">
+            <video #videoEl class="video" playsinline muted></video>
+
+            <div class="overlay" *ngIf="!cameraOpen()">
+              <div class="overlay-inner">
+                <div class="overlay-title">Camera is off</div>
+                <div class="overlay-sub">Click “Start camera” to begin scanning.</div>
+              </div>
+            </div>
+
+            <div class="frame" aria-hidden="true"></div>
+            <div class="scan-hint" *ngIf="cameraOpen()">Align the QR inside the frame</div>
+          </div>
+
+          <div class="actions-row">
+            <button class="secondary-button" type="button" (click)="toggleCamera()" [disabled]="cameraBusy()">
+              {{ cameraOpen() ? "Stop camera" : "Start camera" }}
+            </button>
+
+            <button
+              class="secondary-button"
+              type="button"
+              (click)="previewQr(qrForm.controls.qrText.value)"
+              [disabled]="loading() || !qrForm.valid"
+            >
+              Preview last QR
+            </button>
+          </div>
+        </div>
+
+        <div class="card help-card">
+          <div class="card-title">What happens?</div>
+          <div class="card-subtitle">Preview shows buyer + ticket state. Confirm redeems one ticket.</div>
+          <hr class="section-divider" />
+          <ul class="help-list">
+            <li><span class="dot"></span> Same order can redeem tickets at different times.</li>
+            <li><span class="dot"></span> Already redeemed shows redeemed time + staff email.</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- TICKET ID TAB -->
+      <div class="grid" *ngIf="tab() === 'id'">
+        <div class="card">
+          <div class="card-title">Find by Ticket ID</div>
+          <div class="card-subtitle">Enter the ticket ID shown in the email</div>
+
+          <div class="form-row">
+            <input
+              id="ticketIdInput"
+              type="text"
+              [formControl]="idForm.controls.ticketId"
+              placeholder="e.g. DINNER-AB12CD34"
+              autocomplete="off"
+            />
+            <button class="primary-button" type="button" (click)="previewById()" [disabled]="loading() || !idForm.valid">
+              Preview
+            </button>
+          </div>
+        </div>
+
+        <div class="card help-card">
+          <div class="card-title">When to use this?</div>
+          <div class="card-subtitle">Use Ticket ID if QR image is damaged or can’t be scanned.</div>
+        </div>
+      </div>
+
+      <!-- PREVIEW MODAL -->
+      <div class="confirm-overlay" *ngIf="modalOpen()" (click)="closeModal()">
+        <div class="confirm-modal" (click)="$event.stopPropagation()">
+          <div class="confirm-header">
+            <div class="confirm-title">Confirm coupon redeem</div>
+            <button class="icon-button" type="button" (click)="closeModal()">×</button>
+          </div>
+
+          <div class="confirm-body" *ngIf="preview() as p">
+            <div class="kv">
+              <div class="k">Ticket ID</div>
+              <div class="v mono strong">{{ p.ticket.ticketId }}</div>
+
+              <div class="k">Order ID</div>
+              <div class="v mono">{{ p.ticket.order?.orderId || "—" }}</div>
+
+              <div class="k">Buyer</div>
+              <div class="v">{{ p.ticket.order?.name || "—" }}</div>
+
+              <div class="k">Email</div>
+              <div class="v mono">{{ p.ticket.order?.email || "—" }}</div>
+
+              <div class="k">Redeem status</div>
+              <div class="v">
+                <span class="chip" [class.accent]="p.ticket.redeemStatus === 'REDEEMED'">
+                  {{ p.ticket.redeemStatus }}
+                </span>
+                <span class="sub" *ngIf="p.ticket.redeemedAt">
+                  Redeemed at: {{ p.ticket.redeemedAt | date: "short" }}
+                </span>
+                <span class="sub" *ngIf="p.ticket.redeemedBy?.email">
+                  Redeemed by: <span class="mono">{{ p.ticket.redeemedBy?.email }}</span>
+                </span>
+              </div>
+            </div>
+
+            <div class="busy" *ngIf="loading()">
+              <div class="spinner"></div>
+              <div>Working…</div>
+            </div>
+          </div>
+
+          <div class="confirm-footer">
+            <button class="secondary-button" type="button" (click)="closeModal()">Cancel</button>
+
+            <button
+              class="primary-button"
+              type="button"
+              [disabled]="loading() || !canConfirm()"
+              (click)="previewSource() === 'qr' ? confirmQr() : confirmById()"
+            >
+              {{ loading() ? "Confirming…" : confirmLabel() }}
+            </button>
+          </div>
+        </div>
+      </div>
+      <!-- /PREVIEW MODAL -->
+    </div>
+  </div>
+</app-page-shell>
