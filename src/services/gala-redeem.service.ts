@@ -6,7 +6,7 @@ import { GalaPreview, GalaConfirm } from "../staff/gala-check-in/gala-check-in.t
 
 @Injectable({ providedIn: "root" })
 export class GalaRedeemService {
-  private readonly baseUrl = `${environment.apiUrl}/gala-redeem`;
+  private readonly baseUrl = `${environment.apiUrl}/gala/redeem`;
 
   constructor(private readonly http: HttpClient) {}
 
