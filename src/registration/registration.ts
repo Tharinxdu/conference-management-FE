@@ -92,6 +92,7 @@ export const COUNTRY_INCOME_GROUPS: Record<string, string> = {
 
   // UPPER-MIDDLE / HIGH INCOME ECONOMIES
   Albania: 'UPPER',
+  "Korea, Rep.": 'UPPER',
   'Equatorial Guinea': 'UPPER',
   Moldova: 'UPPER',
   Algeria: 'UPPER',
@@ -168,6 +169,7 @@ export const COUNTRY_INCOME_GROUPS: Record<string, string> = {
   Hungary: 'UPPER',
   'Russian Federation': 'UPPER',
   Bahrain: 'UPPER',
+  Bulgaria: 'UPPER',
   Iceland: 'UPPER',
   'San Marino': 'UPPER',
   Barbados: 'UPPER',
