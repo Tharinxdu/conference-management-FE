@@ -205,7 +205,7 @@ export const COUNTRY_INCOME_GROUPS: Record<string, string> = {
   Switzerland: 'UPPER',
   Croatia: 'UPPER',
   'Macao SAR, China': 'UPPER',
-  'Taiwan, China': 'UPPER',
+  'Taiwan': 'UPPER',
   Curaçao: 'UPPER',
   Malta: 'UPPER',
   'Trinidad and Tobago': 'UPPER',
