@@ -1,5 +1,3 @@
-// FILE: src/abstract/abstract-dashboard/abstract-dashboard.ts
-
 import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
@@ -86,6 +84,12 @@ export class AbstractDashboard implements OnInit, OnDestroy {
   modalInitialData?: AbstractDTO;
 
   readonly skeletonRows = Array.from({ length: 5 });
+
+  // ✅ Abstract submission is now closed after the deadline.
+  // Set this to false later if you want to reopen submissions.
+  readonly abstractSubmissionClosed = true;
+  readonly abstractSubmissionClosedMessage =
+    'Abstract submission date has passed. New submissions, edits and deletions are now closed. You can only view your abstracts.';
 
   // Profile gate
   profileChecking = false;
@@ -265,6 +269,7 @@ export class AbstractDashboard implements OnInit, OnDestroy {
 
   get showToolbarNewAbstractButton(): boolean {
     return (
+      !this.abstractSubmissionClosed &&
       !this.loading &&
       !this.error &&
       this.hasAnyAbstracts &&
@@ -274,6 +279,7 @@ export class AbstractDashboard implements OnInit, OnDestroy {
 
   get showToolbarCreateAbstractButton(): boolean {
     return (
+      !this.abstractSubmissionClosed &&
       !this.loading &&
       !this.error &&
       this.hasAnyAbstracts &&
@@ -511,6 +517,11 @@ export class AbstractDashboard implements OnInit, OnDestroy {
    * --------------------------- */
 
   openCreate(): void {
+    if (this.abstractSubmissionClosed) {
+      this.toastError(this.abstractSubmissionClosedMessage);
+      return;
+    }
+
     if (!this.hasProfile) {
       this.openProfileCreate();
       return;
@@ -534,6 +545,11 @@ export class AbstractDashboard implements OnInit, OnDestroy {
   }
 
   openEdit(a: AbstractDTO): void {
+    if (this.abstractSubmissionClosed) {
+      this.toastError('Abstract submission is closed. You can only view this abstract.');
+      return this.openView(a);
+    }
+
     if (this.isLocked(a)) {
       this.toastError('This abstract is locked and cannot be edited.');
       return this.openView(a);
@@ -583,6 +599,11 @@ export class AbstractDashboard implements OnInit, OnDestroy {
    * --------------------------- */
 
   askDelete(a: AbstractDTO): void {
+    if (this.abstractSubmissionClosed) {
+      this.toastError('Abstract submission is closed. Deleting abstracts is disabled.');
+      return;
+    }
+
     if (this.isLocked(a)) {
       this.toastError('This abstract is locked and cannot be deleted.');
       return;
@@ -615,6 +636,13 @@ export class AbstractDashboard implements OnInit, OnDestroy {
     const id = this.getId(target || undefined);
 
     if (!target || !id || this.confirmBusy) return;
+
+    if (this.abstractSubmissionClosed) {
+      this.confirmError = 'Abstract submission is closed. Deleting abstracts is disabled.';
+      this.toastError(this.confirmError);
+      this.cdr.markForCheck();
+      return;
+    }
 
     if (this.isLocked(target)) {
       this.confirmError = 'This abstract is locked and cannot be deleted.';
@@ -690,6 +718,10 @@ export class AbstractDashboard implements OnInit, OnDestroy {
    * --------------------------- */
 
   isLocked(a: AbstractDTO): boolean {
+    // After the deadline, every abstract becomes view-only from this dashboard.
+    if (this.abstractSubmissionClosed) return true;
+
+    // Before the deadline, only abstracts with submitted status are editable/deletable.
     return this.normStatus(a) !== 'submitted';
   }
 

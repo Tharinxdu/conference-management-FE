@@ -19,6 +19,9 @@
       <div class="toolbar__hint" *ngIf="!loading && !error && abstracts.length > 0">
         You have <span class="count">{{ abstracts.length }}</span> abstract{{ abstracts.length === 1 ? '' : 's' }}.
       </div>
+      <div class="toolbar__hint" *ngIf="abstractSubmissionClosed && !loading && !error">
+        Abstract submission is closed. You can only view your abstracts.
+      </div>
     </div>
 
     <div class="toolbar__right">
@@ -40,6 +43,15 @@
         [title]="!hasProfile ? 'Complete your profile first' : ''">
         Create Abstract
       </button>
+    </div>
+  </div>
+
+  <div class="error-banner error-banner--inline" *ngIf="abstractSubmissionClosed && !loading && !error">
+    <div class="error-banner__content">
+      <div class="error-banner__title">Abstract submission closed</div>
+      <div class="error-banner__msg">
+        {{ abstractSubmissionClosedMessage }}
+      </div>
     </div>
   </div>
 
@@ -74,9 +86,9 @@
     <div class="empty__icon" aria-hidden="true">📝</div>
     <div class="empty__title">No abstracts yet</div>
     <div class="empty__subtitle">
-      Create your first abstract submission and manage updates here.
+      {{ abstractSubmissionClosed ? 'No abstracts found. Abstract submission is now closed.' : 'Create your first abstract submission and manage updates here.' }}
     </div>
-    <button class="primary-button" type="button" (click)="openCreate()"
+    <button *ngIf="!abstractSubmissionClosed" class="primary-button" type="button" (click)="openCreate()"
       [disabled]="profileChecking || profileGateOpen || !hasProfile"
       [title]="!hasProfile ? 'Complete your profile first' : ''">
       Create Abstract
@@ -96,9 +108,10 @@
             {{ statusLabel(a) }}
           </span>
 
-          <span *ngIf="isLocked(a)" class="chip chip--lock" title="This abstract is locked and can only be viewed."
+          <span *ngIf="isLocked(a)" class="chip chip--lock"
+            [title]="abstractSubmissionClosed ? 'Abstract submission is closed. This abstract can only be viewed.' : 'This abstract is locked and can only be viewed.'"
             aria-label="Locked">
-            🔒 Locked
+            🔒 {{ abstractSubmissionClosed ? 'Closed' : 'Locked' }}
           </span>
         </div>
 
@@ -119,7 +132,9 @@
 
           <span class="meta__item" *ngIf="isLocked(a)">
             <span class="meta__label">Note:</span>
-            <span class="meta__value">Edits disabled ({{ statusLabel(a) }}).</span>
+            <span class="meta__value">
+              {{ abstractSubmissionClosed ? 'New submissions, edits and deletions are closed.' : 'Edits disabled (' + statusLabel(a) + ').' }}
+            </span>
           </span>
         </div>
       </div>
@@ -131,13 +146,13 @@
 
         <button class="secondary-button" type="button" (click)="openEdit(a)"
           [disabled]="savingBusy || isDeleting(a) || isLocked(a)"
-          [title]="isLocked(a) ? 'This abstract is locked. You can only view it.' : 'Edit'">
+          [title]="abstractSubmissionClosed ? 'Abstract submission is closed. You can only view it.' : (isLocked(a) ? 'This abstract is locked. You can only view it.' : 'Edit')">
           Edit
         </button>
 
         <button class="danger-button" type="button" (click)="askDelete(a)"
           [disabled]="savingBusy || isDeleting(a) || isLocked(a)"
-          [title]="isLocked(a) ? 'This abstract is locked. You cannot delete it.' : 'Delete'">
+          [title]="abstractSubmissionClosed ? 'Abstract submission is closed. You cannot delete it.' : (isLocked(a) ? 'This abstract is locked. You cannot delete it.' : 'Delete')">
           <span *ngIf="!isDeleting(a)">Delete</span>
           <span *ngIf="isDeleting(a)">Deleting…</span>
         </button>
