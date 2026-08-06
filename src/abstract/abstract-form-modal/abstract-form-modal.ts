@@ -86,13 +86,12 @@ export class AbstractFormModal implements OnInit, OnChanges, OnDestroy {
   loadError = '';
 
   statusLine = '';
-  filesError = '';
 
   loaded: AbstractDTO | null = null;
 
+  // ✅ Read-only. Uploads are disabled in the UI; the backend still stores
+  // attachments on abstracts submitted before this change.
   existingAttachments: AttachmentDTO[] = [];
-  removeAttachmentIds = new Set<string>();
-  newFiles: File[] = [];
 
   abstractWordCount = 0;
 
@@ -305,9 +304,6 @@ export class AbstractFormModal implements OnInit, OnChanges, OnDestroy {
 
     if (this.mode === 'edit' && this.loaded) {
       this.patchFormFromDto(this.loaded);
-      this.removeAttachmentIds.clear();
-      this.newFiles = [];
-      this.filesError = '';
       this.statusLine = '';
       this.mark();
     }
@@ -428,7 +424,7 @@ export class AbstractFormModal implements OnInit, OnChanges, OnDestroy {
 
     const anyDto: any = dto as any;
 
-    // Common omissions in list endpoints: abstractText, keywords, coAuthorsRaw, attachments details
+    // Common omissions in list endpoints: abstractText, keywords, coAuthorsRaw
     const hasText =
       typeof anyDto.abstractText === 'string' &&
       anyDto.abstractText.trim().length > 0;
@@ -470,9 +466,6 @@ export class AbstractFormModal implements OnInit, OnChanges, OnDestroy {
   private onOpen(): void {
     this.statusLine = '';
     this.loadError = '';
-    this.filesError = '';
-    this.removeAttachmentIds.clear();
-    this.newFiles = [];
     this.mark();
 
     if (this.mode === 'create') {
@@ -529,12 +522,6 @@ export class AbstractFormModal implements OnInit, OnChanges, OnDestroy {
           this.applyModeRules();
           this.statusLine = '';
           this.loading = false;
-
-          // IMPORTANT: entering edit/view should clear transient attachment state
-          this.removeAttachmentIds.clear();
-          this.newFiles = [];
-          this.filesError = '';
-
           this.mark();
         },
         error: (err) => {
@@ -553,9 +540,6 @@ export class AbstractFormModal implements OnInit, OnChanges, OnDestroy {
     this.saving = false;
     this.statusLine = '';
     this.loadError = '';
-    this.filesError = '';
-    this.removeAttachmentIds.clear();
-    this.newFiles = [];
     this.abstractWordCount = 0;
   }
 
@@ -794,89 +778,14 @@ export class AbstractFormModal implements OnInit, OnChanges, OnDestroy {
   }
 
   /* -----------------------------
-   * Attachments
+   * Attachments (read-only)
    * ----------------------------- */
-
-  onFilesSelected(event: Event): void {
-    this.filesError = '';
-    const input = event.target as HTMLInputElement;
-    const files = Array.from(input.files || []);
-    if (files.length === 0) return;
-
-    const existingCount = this.existingAttachments.length;
-    const removedCount = this.removeAttachmentIds.size;
-    const effectiveExisting =
-      this.mode === 'edit' ? existingCount - removedCount : existingCount;
-
-    const currentNew = this.newFiles.length;
-    const maxAllowed = 5;
-
-    const availableSlots = Math.max(
-      0,
-      maxAllowed - (effectiveExisting + currentNew)
-    );
-    if (availableSlots <= 0) {
-      this.filesError =
-        'You already have 5 attachments. Remove one before adding more.';
-      input.value = '';
-      this.toastError(this.filesError);
-      this.mark();
-      return;
-    }
-
-    const accepted = files.slice(0, availableSlots);
-    const rejected = files.length > accepted.length;
-
-    const allowedExt = /\.(pdf|doc|docx)$/i;
-    const bad = accepted.find((f) => !allowedExt.test(f.name));
-    if (bad) {
-      this.filesError = 'Only PDF, DOC, or DOCX files are allowed.';
-      input.value = '';
-      this.toastError(this.filesError);
-      this.mark();
-      return;
-    }
-
-    this.newFiles = [...this.newFiles, ...accepted];
-
-    if (rejected) {
-      this.filesError = `Only ${availableSlots} file(s) were added (max 5 total).`;
-      this.toastError(this.filesError);
-    }
-
-    input.value = '';
-    this.mark();
-  }
-
-  removeNewFile(index: number): void {
-    if (this.saving) return;
-    this.newFiles = this.newFiles.filter((_, i) => i !== index);
-    this.mark();
-  }
 
   openAttachment(a: AttachmentDTO): void {
     const url =
       (a as any).url ||
       this.abstracts.buildAttachmentUrl((a as any).storedName);
     window.open(url, '_blank', 'noopener');
-  }
-
-  isMarkedRemoved(a: AttachmentDTO): boolean {
-    return this.removeAttachmentIds.has(String((a as any)._id));
-  }
-
-  toggleRemoveAttachment(a: AttachmentDTO): void {
-    if (this.mode !== 'edit') return;
-    if (this.saving) return;
-
-    const id = String((a as any)._id);
-    if (this.removeAttachmentIds.has(id)) {
-      this.removeAttachmentIds.delete(id);
-    } else {
-      this.removeAttachmentIds.add(id);
-      this.filesError = '';
-    }
-    this.mark();
   }
 
   /* -----------------------------
@@ -949,8 +858,9 @@ export class AbstractFormModal implements OnInit, OnChanges, OnDestroy {
       },
     };
 
+    // ✅ No files: attachment upload is disabled in the UI.
     this.abstracts
-      .createAbstract(payload, this.newFiles)
+      .createAbstract(payload, [])
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (dto) => {
@@ -995,10 +905,9 @@ export class AbstractFormModal implements OnInit, OnChanges, OnDestroy {
       updates.otherCategoryText = '';
     }
 
-    const removeIds = Array.from(this.removeAttachmentIds);
-
+    // ✅ No removals, no new files: existing attachments are left untouched.
     this.abstracts
-      .saveAbstractAllInOne(id, updates, removeIds, this.newFiles)
+      .saveAbstractAllInOne(id, updates, [], [])
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (dto) => {
@@ -1080,15 +989,6 @@ export class AbstractFormModal implements OnInit, OnChanges, OnDestroy {
   /* -----------------------------
    * Utils
    * ----------------------------- */
-
-  prettyBytes(bytes: number): string {
-    const b = Number(bytes || 0);
-    if (b < 1024) return `${b} B`;
-    const kb = b / 1024;
-    if (kb < 1024) return `${kb.toFixed(1)} KB`;
-    const mb = kb / 1024;
-    return `${mb.toFixed(1)} MB`;
-  }
 
   private countWords(text: string): number {
     const t = (text || '').trim();
