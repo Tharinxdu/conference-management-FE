@@ -87,7 +87,7 @@ export class AbstractDashboard implements OnInit, OnDestroy {
 
   // ✅ Abstract submission is now closed after the deadline.
   // Set this to false later if you want to reopen submissions.
-  readonly abstractSubmissionClosed = true;
+  readonly abstractSubmissionClosed = false;
   readonly abstractSubmissionClosedMessage =
     'Abstract submission date has passed. New submissions, edits and deletions are now closed. You can only view your abstracts.';
 
