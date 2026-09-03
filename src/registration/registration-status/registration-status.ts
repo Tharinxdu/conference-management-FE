@@ -15,6 +15,12 @@ type StatusResponse = {
   redirectUrl?: string;
   paidAt?: string | Date;
   lastError?: string;
+
+  // What was actually charged. For local registrants paying in rupees this is
+  // LKR; registration.feeAmount is always the USD fee.
+  currency?: 'USD' | 'LKR';
+  amount?: number;
+
   registration?: {
     registrationId: string;
     title?: string;
@@ -52,6 +58,10 @@ export class RegistrationStatus implements OnInit {
   lastError: string | null = null;
   registration: StatusResponse['registration'] | null = null;
 
+  // Charged currency and amount, straight from the payment record.
+  paidCurrency: 'USD' | 'LKR' | null = null;
+  paidAmount: number | null = null;
+
   errorText: string | null = null;
 
   constructor(
@@ -60,6 +70,11 @@ export class RegistrationStatus implements OnInit {
     private readonly http: HttpClient,
     private readonly cdr: ChangeDetectorRef
   ) {}
+
+  /** True when the registrant paid in rupees, so we can also show the USD fee. */
+  get paidInLkr(): boolean {
+    return this.paidCurrency === 'LKR';
+  }
 
   ngOnInit(): void {
     this.rid = this.route.snapshot.queryParamMap.get('rid');
@@ -112,6 +127,10 @@ export class RegistrationStatus implements OnInit {
     this.lastError = res.lastError || null;
     this.registration = res.registration || null;
     this.paidAt = res.paidAt ? new Date(res.paidAt) : null;
+
+    // Fall back to USD only if the backend didn't send a currency (older records).
+    this.paidCurrency = res.currency || 'USD';
+    this.paidAmount = res.amount ?? null;
 
     if (res.paymentStatus === 'PAID') {
       this.state = 'success';

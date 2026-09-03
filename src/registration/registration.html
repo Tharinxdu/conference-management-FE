@@ -202,6 +202,24 @@
             {{ feeAmountDisplay }}
           </div>
 
+          <!--
+            CURRENCY NOTE
+            Not a choice: local registrants are charged in LKR, everyone else in
+            USD. These lines only explain what will happen at the payment page.
+          -->
+          <p class="hint" *ngIf="rateLoading">Checking today’s exchange rate…</p>
+
+          <!-- <p class="hint" *ngIf="isLkrPayer && lkrAmount !== null && feeAmount !== null">
+            Converted from the USD {{ feeAmount }} registration fee at today’s
+            exchange rate. The exact rupee amount is confirmed on the payment page.
+          </p>
+
+          <p class="hint" *ngIf="isLkrPayer && rateUnavailable && feeAmount !== null">
+            Your payment will be charged in Sri Lankan Rupees, converted from the
+            USD {{ feeAmount }} registration fee at today’s exchange rate. The
+            rupee amount is shown on the payment page.
+          </p> -->
+
           <input type="hidden" id="feeAmount" name="feeAmount" [value]="feeAmount !== null ? feeAmount : ''" />
           <input type="hidden" id="incomeGroup" name="incomeGroup" [value]="incomeGroup || ''" />
         </div>

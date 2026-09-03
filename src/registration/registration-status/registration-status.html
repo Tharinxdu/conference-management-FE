@@ -85,9 +85,24 @@
             <span class="v">{{ prettyConference(registration.conferenceType) }}</span>
           </div>
 
+          <!--
+            Amount paid, in the currency actually charged.
+            registration.feeAmount is always USD, so it's shown separately
+            when the registrant paid in rupees.
+          -->
           <div class="kv">
-            <span class="k">Fee</span>
-            <span class="v strong">USD {{ registration.feeAmount }}</span>
+            <span class="k">Amount paid</span>
+            <span class="v strong" *ngIf="paidAmount !== null">
+              {{ paidCurrency }} {{ paidAmount | number:'1.0-2' }}
+            </span>
+            <span class="v strong" *ngIf="paidAmount === null">
+              USD {{ registration.feeAmount }}
+            </span>
+          </div>
+
+          <div class="kv" *ngIf="paidInLkr && registration.feeAmount">
+            <span class="k">Registration fee</span>
+            <span class="v">USD {{ registration.feeAmount }}</span>
           </div>
 
           <div class="kv" *ngIf="paidAt">

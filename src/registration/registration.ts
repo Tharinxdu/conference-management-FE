@@ -235,6 +235,9 @@ export const COUNTRY_INCOME_GROUPS: Record<string, string> = {
   Palau: 'UPPER',
 };
 
+/** Registrants from this country are charged in LKR. Everyone else pays USD. */
+export const LKR_COUNTRY = 'Sri Lanka';
+
 function getIncomeGroup(country: string): string | null {
   return COUNTRY_INCOME_GROUPS[country] || null;
 }
@@ -266,7 +269,7 @@ function getFeePeriod(): 'early' | 'late' {
 }
 
 function determineIncomeGroup(country: string): string | null {
-  if (country === 'Sri Lanka') return 'LOCAL';
+  if (country === LKR_COUNTRY) return 'LOCAL';
   return getIncomeGroup(country);
 }
 
@@ -321,6 +324,14 @@ export class Registration implements OnInit {
   incomeGroup: string | null = null;
   feeAmountDisplay = 'Select your country, category, and participation type to see the fee.';
 
+  // Currency
+  // Not a choice. Fees are quoted in USD; registrants from Sri Lanka are charged
+  // in LKR at the current rate, everyone else in USD. The server derives this
+  // from the registration and ignores anything the client sends.
+  usdToLkrRate: number | null = null;
+  rateLoading = false;
+  rateUnavailable = false;
+
   // Period / badge
   currentPeriod: 'early' | 'late' = getFeePeriod();
   feePeriodText = '';
@@ -358,6 +369,22 @@ export class Registration implements OnInit {
     private readonly cdr: ChangeDetectorRef,
     private readonly snack: MatSnackBar
   ) { }
+
+  /** True when this registrant will be charged in rupees. */
+  get isLkrPayer(): boolean {
+    return this.country === LKR_COUNTRY;
+  }
+
+  /** The currency this registrant will actually be charged in. */
+  get paymentCurrency(): 'USD' | 'LKR' {
+    return this.isLkrPayer ? 'LKR' : 'USD';
+  }
+
+  /** Approximate rupee figure for the current fee. Null when not applicable. */
+  get lkrAmount(): number | null {
+    if (!this.isLkrPayer || this.feeAmount == null || this.usdToLkrRate == null) return null;
+    return Math.ceil(this.feeAmount * this.usdToLkrRate);
+  }
 
   private toastSuccess(message: string): void {
     this.snack.open(message, 'OK', {
@@ -411,7 +438,50 @@ export class Registration implements OnInit {
   }
 
   onCountryChange(): void {
+    if (this.isLkrPayer) {
+      this.loadExchangeRate();
+    } else {
+      this.usdToLkrRate = null;
+      this.rateUnavailable = false;
+    }
+
     this.updateFeeSummary();
+  }
+
+  /**
+   * Fetch the indicative USD -> LKR rate so a local registrant can see their
+   * rupee figure before paying. If it fails we still let them continue — the
+   * server does the authoritative conversion at payment time.
+   */
+  private loadExchangeRate(): void {
+    if (this.usdToLkrRate !== null || this.rateLoading) return;
+
+    this.rateLoading = true;
+    this.rateUnavailable = false;
+    this.cdr.markForCheck();
+
+    this.http
+      .get<any>(`${this.apiUrl}/payments/exchange-rate`)
+      .pipe(
+        catchError(() => {
+          this.usdToLkrRate = null;
+          this.rateUnavailable = true;
+          this.updateFeeSummary();
+          this.cdr.markForCheck();
+          return EMPTY;
+        }),
+        finalize(() => {
+          this.rateLoading = false;
+          this.cdr.markForCheck();
+        })
+      )
+      .subscribe((res) => {
+        const rate = Number(res?.rate);
+        this.usdToLkrRate = Number.isFinite(rate) && rate > 0 ? rate : null;
+        this.rateUnavailable = this.usdToLkrRate === null;
+        this.updateFeeSummary();
+        this.cdr.markForCheck();
+      });
   }
 
   onParticipantCategoryChange(): void {
@@ -455,7 +525,16 @@ export class Registration implements OnInit {
 
     this.feeAmount = fee;
     this.incomeGroup = group;
-    this.feeAmountDisplay = `Total Fee: USD ${fee}`;
+
+    if (!this.isLkrPayer) {
+      this.feeAmountDisplay = `Total Fee: USD ${fee}`;
+      return;
+    }
+
+    const lkr = this.lkrAmount;
+    this.feeAmountDisplay = lkr !== null
+      ? `Total Fee: LKR ${lkr.toLocaleString('en-US')}`
+      : `Total Fee: USD ${fee}`;
   }
 
   openModal(which: 'dataUse' | 'terms' | 'cancellation'): void {
@@ -685,6 +764,7 @@ export class Registration implements OnInit {
         this.toastSuccess('Redirecting to payment…');
         this.cdr.markForCheck();
 
+        // Currency is not sent — the server derives it from the registration.
         this.http
           .post<any>(`${this.apiUrl}/payments/onepay/initiate`, {
             registrationMongoId,
