@@ -52,6 +52,21 @@
               </div>
             </div>
 
+            <!-- Country of Residence -->
+            <div class="form-group">
+              <label for="country">Country of Residence <span class="required">*</span></label>
+              <select id="country" name="country" required [(ngModel)]="country" (change)="onCountryChange()"
+                [disabled]="submitting">
+                <option value="" disabled hidden>Select your country</option>
+                <option *ngFor="let c of countries" [value]="c">
+                  {{ c }}
+                </option>
+              </select>
+              <div class="error-message" data-error-for="country">
+                {{ errorMessages['country'] }}
+              </div>
+            </div>
+
             <!-- Ticket Count -->
             <div class="form-group">
               <label for="ticketCount">Number of Tickets <span class="required">*</span></label>
@@ -75,6 +90,23 @@
           <div class="summary-amount">
             {{ summaryText }}
           </div>
+
+          <!--
+            CURRENCY NOTE
+            Not a choice: local buyers are charged in LKR, everyone else in USD.
+          -->
+          <p class="hint" *ngIf="rateLoading">Checking today’s exchange rate…</p>
+
+          <p class="hint" *ngIf="isLkrPayer && lkrTotal !== null && usdTotal !== null">
+            Converted from the USD {{ usdTotal }} ticket total at today’s exchange
+            rate. The exact rupee amount is confirmed on the payment page.
+          </p>
+
+          <p class="hint" *ngIf="isLkrPayer && rateUnavailable && usdTotal !== null">
+            Your payment will be charged in Sri Lankan Rupees, converted from the
+            USD {{ usdTotal }} ticket total at today’s exchange rate. The rupee
+            amount is shown on the payment page.
+          </p>
         </div>
       </section>
 

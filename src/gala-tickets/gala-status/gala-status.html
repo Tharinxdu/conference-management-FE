@@ -63,14 +63,34 @@
             <span class="v mono">{{ order.email }}</span>
           </div>
 
+          <!-- <div class="kv" *ngIf="order.country">
+            <span class="k">Country</span>
+            <span class="v">{{ order.country }}</span>
+          </div> -->
+
           <div class="kv">
             <span class="k">Tickets</span>
             <span class="v strong">{{ order.ticketCount }}</span>
           </div>
 
+          <!--
+            Amount paid, in the currency actually charged.
+            order.totalAmount is always USD, so it's shown separately when the
+            buyer paid in rupees.
+          -->
           <div class="kv">
-            <span class="k">Total</span>
-            <span class="v strong">USD {{ order.totalAmount }}</span>
+            <span class="k">Amount paid</span>
+            <span class="v strong" *ngIf="paidAmount !== null">
+              {{ paidCurrency }} {{ paidAmount | number:'1.0-2' }}
+            </span>
+            <span class="v strong" *ngIf="paidAmount === null">
+              USD {{ order.totalAmount }}
+            </span>
+          </div>
+
+          <div class="kv" *ngIf="paidInLkr && order.totalAmount">
+            <span class="k">Ticket total</span>
+            <span class="v">USD {{ order.totalAmount }}</span>
           </div>
 
           <div class="kv" *ngIf="paidAt">

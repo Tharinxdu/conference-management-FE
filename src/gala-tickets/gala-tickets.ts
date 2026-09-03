@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
+import { Component, ChangeDetectionStrategy, ChangeDetectorRef, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
@@ -8,11 +8,16 @@ import { catchError, finalize } from 'rxjs/operators';
 import { PageShell } from '../page-shell/page-shell';
 import { environment } from '../environments/environment';
 
+// Same list the registration page uses — imported rather than duplicated.
+// Adjust this path if your registration component lives elsewhere.
+import { COUNTRY_INCOME_GROUPS, LKR_COUNTRY } from '../registration/registration';
+
 type CreateGalaOrderResponse = {
   _id: string;
   orderId: string;
   name: string;
   email: string;
+  country: string;
   ticketCount: number;
   totalAmount: number;
   currency: string;
@@ -27,13 +32,24 @@ type CreateGalaOrderResponse = {
   styleUrl: './gala-tickets.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class GalaTickets {
+export class GalaTickets implements OnInit {
   private readonly apiUrl = environment.apiUrl;
 
   // Form state
   name = '';
   email = '';
+  country = '';
   ticketCount: number | null = 1;
+
+  // Country dropdown
+  countries: string[] = [];
+
+  // Currency
+  // Not a choice: buyers from Sri Lanka are charged in LKR, everyone else USD.
+  // The server derives this from the order's country.
+  usdToLkrRate: number | null = null;
+  rateLoading = false;
+  rateUnavailable = false;
 
   // UI state
   submitting = false;
@@ -54,8 +70,29 @@ export class GalaTickets {
     private readonly http: HttpClient,
     private readonly cdr: ChangeDetectorRef,
     private readonly snack: MatSnackBar
-  ) {
+  ) {}
+
+  ngOnInit(): void {
+    this.countries = Object.keys(COUNTRY_INCOME_GROUPS).sort();
     this.updateSummary();
+  }
+
+  /** True when this buyer will be charged in rupees. */
+  get isLkrPayer(): boolean {
+    return this.country === LKR_COUNTRY;
+  }
+
+  /** USD total for the current ticket count. */
+  get usdTotal(): number | null {
+    const n = Number(this.ticketCount);
+    if (!Number.isInteger(n) || n < 1) return null;
+    return n * this.unitPrice;
+  }
+
+  /** Approximate rupee total. Null when not applicable. */
+  get lkrTotal(): number | null {
+    if (!this.isLkrPayer || this.usdTotal == null || this.usdToLkrRate == null) return null;
+    return Math.ceil(this.usdTotal * this.usdToLkrRate);
   }
 
   private toastSuccess(message: string): void {
@@ -70,15 +107,74 @@ export class GalaTickets {
     this.updateSummary();
   }
 
+  onCountryChange(): void {
+    if (this.isLkrPayer) {
+      this.loadExchangeRate();
+    } else {
+      this.usdToLkrRate = null;
+      this.rateUnavailable = false;
+    }
+
+    this.updateSummary();
+  }
+
+  /**
+   * Fetch the indicative USD -> LKR rate. If it fails the buyer can still
+   * continue — the server does the authoritative conversion at payment time.
+   */
+  private loadExchangeRate(): void {
+    if (this.usdToLkrRate !== null || this.rateLoading) return;
+
+    this.rateLoading = true;
+    this.rateUnavailable = false;
+    this.cdr.markForCheck();
+
+    this.http
+      .get<any>(`${this.apiUrl}/gala/exchange-rate`)
+      .pipe(
+        catchError(() => {
+          this.usdToLkrRate = null;
+          this.rateUnavailable = true;
+          this.updateSummary();
+          this.cdr.markForCheck();
+          return EMPTY;
+        }),
+        finalize(() => {
+          this.rateLoading = false;
+          this.cdr.markForCheck();
+        })
+      )
+      .subscribe((res) => {
+        const rate = Number(res?.rate);
+        this.usdToLkrRate = Number.isFinite(rate) && rate > 0 ? rate : null;
+        this.rateUnavailable = this.usdToLkrRate === null;
+        this.updateSummary();
+        this.cdr.markForCheck();
+      });
+  }
+
   private updateSummary(): void {
     const n = Number(this.ticketCount || 0);
+
     if (!Number.isFinite(n) || n < 1) {
       this.summaryText = `Each ticket costs USD ${this.unitPrice}.`;
       this.cdr.markForCheck();
       return;
     }
+
     const total = n * this.unitPrice;
-    this.summaryText = `Tickets: ${n}  •  Total: USD ${total}`;
+
+    if (!this.isLkrPayer) {
+      this.summaryText = `Tickets: ${n}  •  Total: USD ${total}`;
+      this.cdr.markForCheck();
+      return;
+    }
+
+    const lkr = this.lkrTotal;
+    this.summaryText = lkr !== null
+      ? `Tickets: ${n}  •  Total: approx. LKR ${lkr.toLocaleString('en-US')}`
+      : `Tickets: ${n}  •  Total: USD ${total}`;
+
     this.cdr.markForCheck();
   }
 
@@ -133,6 +229,7 @@ export class GalaTickets {
 
     const name = (this.name || '').trim();
     const email = (this.email || '').trim();
+    const country = (this.country || '').trim();
     const count = Number(this.ticketCount);
 
     if (!name) {
@@ -145,6 +242,11 @@ export class GalaTickets {
       valid = false;
     } else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
       this.setError('email', 'Please enter a valid email address.');
+      valid = false;
+    }
+
+    if (!country) {
+      this.setError('country', 'This field is required.');
       valid = false;
     }
 
@@ -175,6 +277,7 @@ export class GalaTickets {
     const payload = {
       name: this.name.trim(),
       email: this.email.trim(),
+      country: this.country.trim(),
       ticketCount: Number(this.ticketCount),
     };
 
@@ -206,7 +309,8 @@ export class GalaTickets {
           return;
         }
 
-        // 2) Initiate OnePay payment
+        // 2) Initiate OnePay payment.
+        //    Currency is not sent — the server derives it from the order.
         this.formStatus = 'Redirecting to payment...';
         this.toastSuccess('Redirecting to payment…');
         this.cdr.markForCheck();
