@@ -1,0 +1,458 @@
+<app-page-shell
+  [title]="'Registrations'"
+  [subtitle]="'Paid delegates with a QR issued — search, review and check in.'"
+>
+  <div headerRight class="header-actions">
+    <button class="secondary-button" type="button" (click)="refresh()" [disabled]="loading()">
+      {{ loading() ? 'Refreshing…' : 'Refresh' }}
+    </button>
+
+    <button
+      *ngIf="canExport()"
+      class="primary-button"
+      type="button"
+      (click)="exportExcel()"
+      [disabled]="exporting() || loading()"
+      title="Exports every row matching the current filters"
+    >
+      {{ exporting() ? 'Exporting…' : 'Export Excel' }}
+    </button>
+  </div>
+
+  <div class="content-wrap">
+    <div class="page">
+      <!-- Banners -->
+      <div class="banner-row" *ngIf="errorMsg() as err">
+        <div class="error-banner" role="alert">
+          <div class="error-title">Couldn’t load registrations</div>
+          <div class="error-text">{{ err }}</div>
+        </div>
+      </div>
+
+      <div class="banner-row" *ngIf="infoMsg() as info">
+        <div class="info-banner" role="status">
+          <div class="info-text">{{ info }}</div>
+          <button class="icon-button" type="button" (click)="dismissInfo()" aria-label="Dismiss">
+            ×
+          </button>
+        </div>
+      </div>
+
+      <!-- Summary -->
+      <div class="summary card">
+        <div class="summary__stats">
+          <div class="stat">
+            <div class="stat__label">Ready for check-in</div>
+            <div class="stat__value mono">{{ summary().total }}</div>
+            <div class="stat__sub">Paid delegates with a QR</div>
+          </div>
+
+          <div class="stat stat--ok">
+            <div class="stat__label">Checked in</div>
+            <div class="stat__value mono">{{ summary().checkedIn }}</div>
+            <div class="stat__sub">{{ checkedInPct() }}% of the list</div>
+          </div>
+
+          <div class="stat stat--wait">
+            <div class="stat__label">Still to arrive</div>
+            <div class="stat__value mono">{{ summary().notCheckedIn }}</div>
+            <div class="stat__sub">Not checked in yet</div>
+          </div>
+        </div>
+
+        <div
+          class="progress"
+          role="progressbar"
+          [attr.aria-valuenow]="checkedInPct()"
+          aria-valuemin="0"
+          aria-valuemax="100"
+        >
+          <div class="progress__bar" [style.width.%]="checkedInPct()"></div>
+        </div>
+
+        <div class="summary__note">
+          
+        </div>
+      </div>
+
+      <!-- Toolbar -->
+      <div class="toolbar card">
+        <div class="toolbar-row">
+          <div class="search">
+            <input
+              type="search"
+              [value]="query()"
+              (input)="onSearchInput($any($event.target).value)"
+              placeholder="Search by name, registration ID, email, mobile or institution…"
+              aria-label="Search registrations"
+              autocomplete="off"
+            />
+          </div>
+
+          <div class="filters">
+            <select
+              class="control-select"
+              [value]="conferenceType()"
+              (change)="onConferenceType($any($event.target).value)"
+              aria-label="Conference type filter"
+            >
+              <option value="">All conference types</option>
+              <option *ngFor="let t of conferenceTypes()" [value]="t">{{ t }}</option>
+            </select>
+
+            <select
+              class="control-select"
+              [value]="checkInFilter()"
+              (change)="onCheckInFilter($any($event.target).value)"
+              aria-label="Check-in status filter"
+            >
+              <option value="">All check-in states</option>
+              <option value="CHECKED_IN">Checked in</option>
+              <option value="NOT_CHECKED_IN">Not checked in</option>
+            </select>
+
+            <select
+              class="control-select"
+              [value]="limit()"
+              (change)="onLimit($any($event.target).value)"
+              aria-label="Rows per page"
+            >
+              <option [value]="10">10 / page</option>
+              <option [value]="25">25 / page</option>
+              <option [value]="50">50 / page</option>
+              <option [value]="100">100 / page</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="mini-hint">
+          Only <strong>paid</strong> registrations with a QR issued are listed. Click a row for full
+          details.
+        </div>
+      </div>
+
+      <!-- Loading -->
+      <div class="card table-card" *ngIf="loading()">
+        <div class="sk-row" *ngFor="let _ of [1, 2, 3, 4, 5, 6]; trackBy: trackByIndex">
+          <div class="sk sk-a"></div>
+          <div class="sk sk-b"></div>
+          <div class="sk sk-c"></div>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="card table-card" *ngIf="!loading() && hasRows()">
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th class="chev-col"></th>
+
+                <th>
+                  <button class="th-sort" type="button" (click)="onSort('name')">
+                    Delegate <span class="sort-ic">{{ sortIcon('name') }}</span>
+                  </button>
+                </th>
+
+                <th>
+                  <button class="th-sort" type="button" (click)="onSort('registrationId')">
+                    Registration ID <span class="sort-ic">{{ sortIcon('registrationId') }}</span>
+                  </button>
+                </th>
+
+                <th>
+                  <button class="th-sort" type="button" (click)="onSort('conferenceType')">
+                    Conference <span class="sort-ic">{{ sortIcon('conferenceType') }}</span>
+                  </button>
+                </th>
+
+                <th>QR</th>
+
+                <th>
+                  <button class="th-sort" type="button" (click)="onSort('checkedInAt')">
+                    Check-in <span class="sort-ic">{{ sortIcon('checkedInAt') }}</span>
+                  </button>
+                </th>
+
+                <th class="action-col">Action</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              <ng-container *ngFor="let r of rows(); trackBy: trackByRowId">
+                <tr
+                  class="row"
+                  [class.row--done]="isCheckedIn(r)"
+                  (click)="toggleExpand(r)"
+                  tabindex="0"
+                  (keydown.enter)="toggleExpand(r)"
+                  (keydown.space)="toggleExpand(r)"
+                  [attr.aria-expanded]="isExpanded(r)"
+                >
+                  <td class="chev">
+                    <span class="chev-ic" [class.open]="isExpanded(r)">▾</span>
+                  </td>
+
+                  <td>
+                    <div class="who">
+                      <div class="who__name">{{ fullName(r) }}</div>
+                      <div class="who__meta mono">{{ r.email || '—' }}</div>
+                    </div>
+                  </td>
+
+                  <td class="mono strong">{{ r.registrationId }}</td>
+
+                  <td>
+                    <div class="conf">
+                      <span class="chip">{{ r.conferenceType || '—' }}</span>
+                      <div class="conf__sub">{{ r.participantCategory || '—' }}</div>
+                    </div>
+                  </td>
+
+                  <td>
+                    <span
+                      class="chip"
+                      [class.accent]="r.qr.status === 'ACTIVE'"
+                      [class.danger]="r.qr.status !== 'ACTIVE'"
+                    >
+                      {{ r.qr.status }}
+                    </span>
+                  </td>
+
+                  <td>
+                    <span class="chip" [class.accent]="isCheckedIn(r)" [class.warn]="!isCheckedIn(r)">
+                      {{ isCheckedIn(r) ? 'Checked in' : 'Not checked in' }}
+                    </span>
+                    <div class="cell-sub mono" *ngIf="r.qr.checkedInAt">
+                      {{ r.qr.checkedInAt | date: 'short' }}
+                    </div>
+                  </td>
+
+                  <td class="action-col">
+                    <button
+                      class="primary-button btn-sm"
+                      type="button"
+                      *ngIf="!isCheckedIn(r)"
+                      (click)="openCheckIn(r, $event)"
+                    >
+                      Check in
+                    </button>
+                    <span class="done-tick" *ngIf="isCheckedIn(r)" aria-label="Checked in">✓</span>
+                  </td>
+                </tr>
+
+                <!-- Detail -->
+                <tr *ngIf="isExpanded(r)">
+                  <td colspan="7" class="expand-cell">
+                    <div class="expand-card">
+                      <div class="detail-grid">
+                        <div class="kv">
+                          <div class="k">Full name</div>
+                          <div class="v">{{ fullName(r) }}</div>
+
+                          <div class="k">Designation</div>
+                          <div class="v">{{ r.designation || '—' }}</div>
+
+                          <div class="k">Institution</div>
+                          <div class="v">{{ r.institution || '—' }}</div>
+
+                          <div class="k">Country</div>
+                          <div class="v">{{ r.country || '—' }}</div>
+                        </div>
+
+                        <div class="kv">
+                          <div class="k">Email</div>
+                          <div class="v mono">{{ r.email || '—' }}</div>
+
+                          <div class="k">Mobile</div>
+                          <div class="v mono">{{ r.mobile || '—' }}</div>
+
+                          <div class="k">Category</div>
+                          <div class="v">{{ r.participantCategory || '—' }}</div>
+
+                          <div class="k">Conference</div>
+                          <div class="v">{{ r.conferenceType || '—' }}</div>
+                        </div>
+
+                        <div class="kv">
+                          <div class="k">QR status</div>
+                          <div class="v">
+                            <span
+                              class="chip"
+                              [class.accent]="r.qr.status === 'ACTIVE'"
+                              [class.danger]="r.qr.status !== 'ACTIVE'"
+                            >
+                              {{ r.qr.status }}
+                            </span>
+                          </div>
+
+                          <div class="k">QR issued</div>
+                          <div class="v mono">
+                            {{ r.qr.issuedAt ? (r.qr.issuedAt | date: 'short') : '—' }}
+                          </div>
+
+                          <div class="k">Checked in at</div>
+                          <div class="v mono">
+                            {{ r.qr.checkedInAt ? (r.qr.checkedInAt | date: 'medium') : '—' }}
+                          </div>
+
+                          <div class="k">Checked in by</div>
+                          <div class="v mono">{{ r.qr.checkedInByEmail || '—' }}</div>
+                        </div>
+                      </div>
+
+                      <div class="expand-foot">
+                        <div class="expand-foot__meta mono">
+                          Registered {{ r.registeredAt ? (r.registeredAt | date: 'medium') : '—' }}
+                        </div>
+
+                        <button
+                          class="primary-button"
+                          type="button"
+                          *ngIf="!isCheckedIn(r)"
+                          (click)="openCheckIn(r, $event)"
+                        >
+                          Check in {{ r.firstName || 'delegate' }}
+                        </button>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              </ng-container>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pager">
+          <button
+            class="secondary-button"
+            type="button"
+            (click)="prevPage()"
+            [disabled]="page() <= 1 || loading()"
+          >
+            Prev
+          </button>
+
+          <div class="pager__meta">
+            Showing <span class="mono">{{ rangeStart() }}</span
+            >–<span class="mono">{{ rangeEnd() }}</span> of
+            <span class="mono">{{ total() }}</span>
+          </div>
+
+          <button
+            class="secondary-button"
+            type="button"
+            (click)="nextPage()"
+            [disabled]="page() >= lastPage() || loading()"
+          >
+            Next
+          </button>
+        </div>
+      </div>
+
+      <!-- Empty -->
+      <div class="card table-card" *ngIf="!loading() && !hasRows() && !errorMsg()">
+        <div class="empty">
+          <div class="empty__title">No registrations found</div>
+          <div class="empty__sub">
+            Only paid registrations with a QR appear here. Try clearing the search or filters.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Check-in confirmation / result -->
+  <div class="confirm-overlay" *ngIf="checkInTarget() as target" (click)="closeCheckIn()">
+    <div
+      class="confirm-modal"
+      [class.confirm-modal--done]="!!checkInResult()"
+      (click)="$event.stopPropagation()"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Confirm check-in"
+    >
+      <!-- STEP 2: result -->
+      <ng-container *ngIf="checkInResult() as r">
+        <div class="result" role="status" aria-live="polite">
+          <div class="result__mark" [class.result__mark--repeat]="r.alreadyDone" aria-hidden="true">
+            {{ r.alreadyDone ? '!' : '✓' }}
+          </div>
+
+          <div class="result__title">{{ r.title }}</div>
+          <div class="result__detail">{{ r.detail }}</div>
+
+          <div class="result__meta">
+            <span class="mono strong">{{ r.primaryId }}</span>
+            <span class="sub">{{ r.at | date: 'shortTime' }}</span>
+          </div>
+
+          <div class="result__note" *ngIf="r.alreadyDone">
+            No second entry was recorded — the original stands.
+          </div>
+        </div>
+
+        <div class="confirm-footer">
+          <button class="primary-button" type="button" (click)="closeCheckIn()">Done</button>
+        </div>
+      </ng-container>
+
+      <!-- STEP 1: confirm -->
+      <ng-container *ngIf="!checkInResult()">
+      <div class="confirm-header">
+        <div class="confirm-title">Confirm check-in</div>
+        <button class="icon-button" type="button" (click)="closeCheckIn()" aria-label="Close">
+          ×
+        </button>
+      </div>
+
+      <div class="confirm-body">
+        <div class="kv">
+          <div class="k">Delegate</div>
+          <div class="v strong">{{ fullName(target) }}</div>
+
+          <div class="k">Registration ID</div>
+          <div class="v mono strong">{{ target.registrationId }}</div>
+
+          <div class="k">Conference</div>
+          <div class="v">{{ target.conferenceType || '—' }}</div>
+
+          <div class="k">Institution</div>
+          <div class="v">{{ target.institution || '—' }}</div>
+        </div>
+
+        <div class="modal-note">
+          This records the delegate as checked in, exactly as a QR scan would.
+        </div>
+
+        <div class="expand-error" *ngIf="checkInError() as err">{{ err }}</div>
+
+        <div class="busy" *ngIf="checkInBusy()">
+          <div class="spinner" aria-hidden="true"></div>
+          <div>Checking in…</div>
+        </div>
+      </div>
+
+      <div class="confirm-footer">
+        <button
+          class="secondary-button"
+          type="button"
+          (click)="closeCheckIn()"
+          [disabled]="checkInBusy()"
+        >
+          Cancel
+        </button>
+        <button
+          class="primary-button"
+          type="button"
+          (click)="confirmCheckIn()"
+          [disabled]="checkInBusy()"
+        >
+          {{ checkInBusy() ? 'Checking in…' : 'Confirm check-in' }}
+        </button>
+      </div>
+      </ng-container>
+    </div>
+  </div>
+</app-page-shell>

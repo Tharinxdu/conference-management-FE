@@ -5,6 +5,22 @@
   subtitle="Login or create an account to submit and manage your abstracts."
 >
   <section class="card auth-wrapper">
+    <div class="session-banner" role="alert" *ngIf="sessionExpired()">
+      <span class="session-banner__icon" aria-hidden="true">⏱</span>
+      <div class="session-banner__text">
+        <div class="session-banner__title">Session expired</div>
+        <div class="session-banner__body">{{ sessionExpiredMessage }}</div>
+      </div>
+      <button
+        class="session-banner__close"
+        type="button"
+        (click)="dismissSessionExpired()"
+        aria-label="Dismiss"
+      >
+        ×
+      </button>
+    </div>
+
     <div class="auth-tabs">
       <button
         class="tab-button"

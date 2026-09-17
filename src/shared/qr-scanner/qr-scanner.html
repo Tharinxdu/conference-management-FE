@@ -1,0 +1,44 @@
+<div class="scanner" [style.--scanner-accent]="accentColor()">
+  <div class="card-head">
+    <div>
+      <div class="card-title">{{ title() }}</div>
+      <div class="card-subtitle">{{ subtitle() }}</div>
+    </div>
+
+    <div class="device" *ngIf="devices().length > 1">
+      <select
+        class="control-select control-select--small"
+        [value]="selectedDeviceId()"
+        (change)="onDeviceChange($any($event.target).value)"
+        aria-label="Camera"
+      >
+        <option *ngFor="let d of devices()" [value]="d.deviceId">{{ d.label }}</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="scanner-surface" [class.off]="!cameraOpen()">
+    <video #videoEl class="video" playsinline muted></video>
+
+    <div class="overlay" *ngIf="!cameraOpen()">
+      <div class="overlay-inner">
+        <div class="overlay-title">Camera is off</div>
+        <div class="overlay-sub">Tap “Start camera” to begin scanning.</div>
+      </div>
+    </div>
+
+    <div class="frame" aria-hidden="true"></div>
+    <div class="scan-hint" *ngIf="cameraOpen()">{{ hint() }}</div>
+  </div>
+
+  <div class="actions-row">
+    <button
+      class="primary-button"
+      type="button"
+      (click)="toggle()"
+      [disabled]="cameraBusy()"
+    >
+      {{ cameraBusy() ? 'Starting…' : cameraOpen() ? 'Stop camera' : 'Start camera' }}
+    </button>
+  </div>
+</div>

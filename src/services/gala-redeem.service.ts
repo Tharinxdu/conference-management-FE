@@ -2,7 +2,7 @@ import { Injectable } from "@angular/core";
 import { HttpClient } from "@angular/common/http";
 import { environment } from "../environments/environment";
 import { Observable } from "rxjs";
-import { GalaPreview, GalaConfirm } from "../staff/gala-check-in/gala-check-in.types";
+import { GalaPreview, GalaConfirm } from "../shared/check-in-console/gala-redeem.types";
 
 @Injectable({ providedIn: "root" })
 export class GalaRedeemService {

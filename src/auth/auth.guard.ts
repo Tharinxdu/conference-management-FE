@@ -1,7 +1,18 @@
 import { inject } from '@angular/core';
-import { CanActivateFn, Router } from '@angular/router';
+import { CanActivateFn, Router, UrlTree } from '@angular/router';
 import { map } from 'rxjs';
 import { AuthService } from '../services/auth.service';
+import { SESSION_EXPIRED_SNACK } from './session-notice';
+
+/**
+ * Send an unauthenticated visitor to the login page — and, if they were signed
+ * in earlier in this browser session, say why they were kicked out.
+ */
+function toLogin(router: Router, auth: AuthService): UrlTree {
+  return auth.wasSignedIn()
+    ? router.createUrlTree(['/auth'], { queryParams: { snack: SESSION_EXPIRED_SNACK } })
+    : router.createUrlTree(['/auth']);
+}
 
 /**
  * Protects routes that require a logged-in user.
@@ -11,9 +22,7 @@ export const authGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
   const router = inject(Router);
 
-  return auth.me().pipe(
-    map((user) => (user ? true : router.createUrlTree(['/auth'])))
-  );
+  return auth.me().pipe(map((user) => (user ? true : toLogin(router, auth))));
 };
 
 /**
@@ -27,7 +36,7 @@ export const adminGuard: CanActivateFn = () => {
 
   return auth.me().pipe(
     map((user) => {
-      if (!user) return router.createUrlTree(['/auth']);
+      if (!user) return toLogin(router, auth);
       return user.isAdmin ? true : router.createUrlTree(['/abstract-dashboard']);
     })
   );
@@ -49,13 +58,17 @@ export const authRedirectGuard: CanActivateFn = () => {
   );
 };
 
+/**
+ * Protects staff routes. Admins are allowed through as well, matching the
+ * backend's requireStaff.
+ */
 export const staffGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
   const router = inject(Router);
 
   return auth.me().pipe(
     map((user) => {
-      if (!user) return router.createUrlTree(['/auth']);
+      if (!user) return toLogin(router, auth);
 
       if (user.isStaff || user.isAdmin) return true;
 

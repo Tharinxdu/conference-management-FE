@@ -68,12 +68,4 @@ export class AdminDashboardService {
       withCredentials: true,
     });
   }
-
-  logout(): Observable<{ ok?: boolean; message?: string }> {
-    return this.http.post<{ ok?: boolean; message?: string }>(
-      `${this.apiUrl}/auth/logout`,
-      {},
-      { withCredentials: true }
-    );
-  }
 }

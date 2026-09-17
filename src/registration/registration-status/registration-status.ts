@@ -1,7 +1,7 @@
 import { Component, ChangeDetectionStrategy, ChangeDetectorRef, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
-import { HttpClient, HttpClientModule } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { environment } from '../../environments/environment';
 import { EMPTY } from 'rxjs';
 import { catchError, finalize, tap } from 'rxjs/operators';
@@ -41,7 +41,7 @@ type ViewState = 'missing' | 'loading' | 'pending' | 'success' | 'failed';
 @Component({
   selector: 'app-registration-status',
   standalone: true,
-  imports: [CommonModule, HttpClientModule, PageShell],
+  imports: [CommonModule, PageShell],
   templateUrl: './registration-status.html',
   styleUrl: './registration-status.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -1,0 +1,244 @@
+<app-page-shell
+  [title]="'Check-in'"
+  [subtitle]="'Scan conference registration QRs and gala dinner coupons from one screen.'"
+>
+  <div headerRight class="header-actions">
+    <span class="mode-badge" [class.mode-badge--gala]="mode() === 'gala'">
+      <span aria-hidden="true">{{ activeMeta().icon }}</span>
+      {{ activeMeta().short }}
+    </span>
+
+    <button class="secondary-button" type="button" (click)="clearAll()">Clear</button>
+  </div>
+
+  <div class="content-wrap" [class.is-gala]="mode() === 'gala'">
+    <div class="page">
+      <!-- Mode selector: the one decision the operator makes before scanning -->
+      <div class="mode-card card">
+        <div class="mode-card__label" id="modeLabel">Which QR are you scanning?</div>
+
+        <div class="mode-switch" role="radiogroup" aria-labelledby="modeLabel">
+          <button
+            *ngFor="let m of modes; trackBy: trackByIndex"
+            class="mode-option"
+            type="button"
+            role="radio"
+            [attr.aria-checked]="mode() === m"
+            [class.active]="mode() === m"
+            [class.mode-option--gala]="m === 'gala'"
+            (click)="setMode(m)"
+          >
+            <span class="mode-option__icon" aria-hidden="true">{{ meta[m].icon }}</span>
+            <span class="mode-option__text">
+              <span class="mode-option__title">{{ meta[m].label }}</span>
+              <span class="mode-option__sub">{{ meta[m].scanSubtitle }}</span>
+            </span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Banners -->
+      <div class="banner-row" *ngIf="errorMsg() as err">
+        <div class="error-banner" role="alert">
+          <div class="error-title">Couldn’t complete that</div>
+          <div class="error-text">{{ err }}</div>
+        </div>
+      </div>
+
+      <div class="banner-row" *ngIf="infoMsg() as info">
+        <div class="info-banner" role="status">
+          <div class="info-text">{{ info }}</div>
+          <button class="icon-button" type="button" (click)="dismissInfo()" aria-label="Dismiss">
+            ×
+          </button>
+        </div>
+      </div>
+
+      <!-- Method tabs -->
+      <div class="toolbar card">
+        <div class="toolbar-row">
+          <div class="tabs" role="tablist" aria-label="Check-in method">
+            <button
+              class="tab"
+              type="button"
+              role="tab"
+              [attr.aria-selected]="method() === 'scan'"
+              [class.active]="method() === 'scan'"
+              (click)="setMethod('scan')"
+            >
+              Scan QR
+            </button>
+            <button
+              class="tab"
+              type="button"
+              role="tab"
+              [attr.aria-selected]="method() === 'manual'"
+              [class.active]="method() === 'manual'"
+              (click)="setMethod('manual')"
+            >
+              Enter {{ activeMeta().manualLabel }}
+            </button>
+          </div>
+
+          <div class="toolbar-right">
+            <span class="hint-inline">
+              {{ method() === 'scan' ? activeMeta().scanSubtitle : activeMeta().manualHelp }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid">
+        <!-- Scan -->
+        <div class="card scanner-card" *ngIf="method() === 'scan'">
+          <app-qr-scanner
+            [title]="activeMeta().scanTitle"
+            [subtitle]="activeMeta().scanSubtitle"
+            [hint]="activeMeta().scanHint"
+            [accentColor]="activeMeta().accent"
+            (scanned)="onScanned($event)"
+            (scanError)="onScanError($event)"
+          ></app-qr-scanner>
+        </div>
+
+        <!-- Manual -->
+        <div class="card" *ngIf="method() === 'manual'">
+          <div class="card-title">Find by {{ activeMeta().manualLabel }}</div>
+          <div class="card-subtitle">{{ activeMeta().manualHelp }}</div>
+
+          <form class="form-row" (ngSubmit)="previewManual()">
+            <input
+              type="text"
+              [formControl]="manualForm.controls.code"
+              [placeholder]="activeMeta().manualPlaceholder"
+              [attr.aria-label]="activeMeta().manualLabel"
+              autocomplete="off"
+              autocapitalize="characters"
+              spellcheck="false"
+            />
+            <button
+              class="primary-button"
+              type="submit"
+              [disabled]="loading() || manualForm.invalid"
+            >
+              {{ loading() ? 'Checking…' : 'Look up' }}
+            </button>
+          </form>
+
+          <div class="mini-hint">
+            Nothing is recorded until you confirm on the next screen.
+          </div>
+        </div>
+
+        <!-- Side panel -->
+        <div class="card side-card">
+          <div class="card-title">This session</div>
+          <div class="card-subtitle">
+            {{ recent().length ? 'Most recent first' : 'Your confirmations will appear here' }}
+          </div>
+
+          <hr class="section-divider" />
+
+          <div class="recent" *ngIf="recent().length; else noRecent">
+            <div class="recent__item" *ngFor="let r of recent(); trackBy: trackByIndex">
+              <div class="recent__left">
+                <span class="recent__icon" aria-hidden="true">{{ meta[r.mode].icon }}</span>
+                <div>
+                  <div class="recent__name">{{ r.label }}</div>
+                  <div class="recent__id mono">{{ r.primaryId }}</div>
+                </div>
+              </div>
+              <div class="recent__right">
+                <span class="chip mini" [class.warn]="r.alreadyDone" [class.accent]="!r.alreadyDone">
+                  {{ r.alreadyDone ? 'Already done' : meta[r.mode].successVerb }}
+                </span>
+                <div class="recent__time mono">{{ r.at | date: 'shortTime' }}</div>
+              </div>
+            </div>
+          </div>
+
+          <ng-template #noRecent>
+            <ul class="help-list">
+              <li>
+                <span class="dot"></span> Pick the QR type first — the frame colour matches your
+                choice.
+              </li>
+              <li>
+                <span class="dot"></span> Scanning only previews; nothing is recorded until you
+                confirm.
+              </li>
+              <li>
+                <span class="dot"></span> The camera restarts automatically after each confirmation.
+              </li>
+            </ul>
+          </ng-template>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirmation -->
+  <div class="confirm-overlay" *ngIf="modalOpen() && preview() as p" (click)="closeModal()">
+    <div
+      class="confirm-modal"
+      [class.confirm-modal--gala]="p.mode === 'gala'"
+      (click)="$event.stopPropagation()"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Confirm"
+    >
+      <div class="confirm-header">
+        <div class="confirm-title">
+          <span aria-hidden="true">{{ meta[p.mode].icon }}</span>
+          {{ meta[p.mode].label }}
+        </div>
+        <button class="icon-button" type="button" (click)="closeModal()" aria-label="Close">
+          ×
+        </button>
+      </div>
+
+      <div class="confirm-body">
+        <div class="headline">{{ p.headline }}</div>
+        <div class="headline-sub mono">{{ p.primaryId }}</div>
+
+        <div class="state-row">
+          <span class="chip" [class.accent]="!p.done" [class.warn]="p.done">
+            {{ p.done ? (p.mode === 'gala' ? 'Already redeemed' : 'Already checked in') : 'Not yet ' + meta[p.mode].successVerb }}
+          </span>
+          <span class="sub" *ngIf="p.doneAt">at {{ p.doneAt | date: 'short' }}</span>
+          <span class="sub" *ngIf="p.doneByEmail">by <span class="mono">{{ p.doneByEmail }}</span></span>
+        </div>
+
+        <div class="blocked" *ngIf="p.blockedReason as reason">{{ reason }}</div>
+
+        <hr class="section-divider" />
+
+        <div class="kv">
+          <ng-container *ngFor="let f of p.fields; trackBy: trackByIndex">
+            <div class="k">{{ f.label }}</div>
+            <div class="v" [class.mono]="f.mono">{{ f.value }}</div>
+          </ng-container>
+        </div>
+
+        <div class="busy" *ngIf="loading()">
+          <div class="spinner" aria-hidden="true"></div>
+          <div>Working…</div>
+        </div>
+      </div>
+
+      <div class="confirm-footer">
+        <button class="secondary-button" type="button" (click)="closeModal()" [disabled]="loading()">
+          {{ canConfirm() ? 'Cancel' : 'Close' }}
+        </button>
+        <button
+          class="primary-button"
+          type="button"
+          (click)="confirm()"
+          [disabled]="loading() || !canConfirm()"
+        >
+          {{ loading() ? 'Confirming…' : confirmLabel() }}
+        </button>
+      </div>
+    </div>
+  </div>
+</app-page-shell>

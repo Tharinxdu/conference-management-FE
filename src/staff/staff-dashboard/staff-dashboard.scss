@@ -490,3 +490,46 @@
     min-width: 720px;
   }
 }
+/* ---------- Added: section header + combined activity feed ---------- */
+.section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.35rem;
+
+  .section__title {
+    margin-bottom: 0;
+  }
+}
+
+.quick-inline {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+.activity {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.activity__icon {
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.activity__verb {
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.activity__where {
+  margin-top: 2px;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+}

@@ -3,18 +3,24 @@ import { ChangeDetectionStrategy, Component, Type, computed, signal } from '@ang
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { BehaviorSubject, catchError, finalize, map, of, startWith, switchMap } from 'rxjs';
-import { StaffGalaDashboardService, TGalaStaffStats } from '../../services/staff-gala-dashboard.service';
+import { AuthService } from '../../services/auth.service';
+import {
+  StaffGalaDashboardService,
+  type TStaffActivityEntry,
+  type TStaffDashboardStats,
+} from '../../services/staff-gala-dashboard.service';
 
 // ✅ Feature components
-import { GalaCheckIn } from '../gala-check-in/gala-check-in';
+import { CheckInConsole } from '../../shared/check-in-console/check-in-console';
+import { StaffRegistrations } from '../staff-registrations/staff-registrations';
 import { GalaOrders } from '../gala-orders/gala-orders';
 
-type TNavKey = 'dashboard' | 'gala-redeem' | 'gala-orders';
+type TNavKey = 'dashboard' | 'checkin' | 'registrations' | 'gala-orders';
 
 type TVm = {
   loading: boolean;
   error: string | null;
-  data: TGalaStaffStats | null;
+  data: TStaffDashboardStats | null;
   lastUpdatedIso: string | null;
 };
 
@@ -32,13 +38,11 @@ export class StaffDashboard {
 
   private readonly refresh$ = new BehaviorSubject<void>(undefined);
 
-  /**
-   * ✅ IMPORTANT FIX:
-   * Tell TS this can return ANY Angular component Type, not just GalaCheckIn.
-   */
+  /** Any Angular component type — each feature view renders its own page shell. */
   readonly viewComponent = computed<Type<any> | null>(() => {
     const key = this.active();
-    if (key === 'gala-redeem') return GalaCheckIn;
+    if (key === 'checkin') return CheckInConsole;
+    if (key === 'registrations') return StaffRegistrations;
     if (key === 'gala-orders') return GalaOrders;
     return null; // dashboard view is inside this component
   });
@@ -76,6 +80,7 @@ export class StaffDashboard {
 
   constructor(
     private readonly staff: StaffGalaDashboardService,
+    private readonly auth: AuthService,
     private readonly router: Router
   ) {}
 
@@ -87,20 +92,49 @@ export class StaffDashboard {
     this.refresh$.next();
   }
 
+  /**
+   * Log out through AuthService so its cached user is cleared. Posting to the
+   * logout endpoint directly left that cache populated, and authRedirectGuard
+   * then bounced the user straight back into the dashboard.
+   */
   logout() {
     if (this.busy()) return;
 
     this.busy.set(true);
-    this.staff
+    this.auth
       .logout()
       .pipe(
         catchError(() => of(void 0)),
         finalize(() => this.busy.set(false))
       )
       .subscribe(() => {
-        // ✅ Your auth route is /auth
         this.router.navigateByUrl('/auth');
       });
+  }
+
+  /**
+   * Defensive read of the activity feed: an older backend build can omit it,
+   * and a missing array here used to take the whole dashboard down.
+   */
+  activityRows(d: TStaffDashboardStats): TStaffActivityEntry[] {
+    return d?.recentActivity ?? [];
+  }
+
+  /** Label for one row of the merged activity feed. */
+  activityIcon(entry: TStaffActivityEntry) {
+    return entry.type === 'CHECK_IN' ? '🎫' : '🍽️';
+  }
+
+  activityVerb(entry: TStaffActivityEntry) {
+    return entry.type === 'CHECK_IN' ? 'Checked in' : 'Redeemed';
+  }
+
+  activityWhere(entry: TStaffActivityEntry) {
+    return entry.type === 'CHECK_IN' ? 'Conference' : 'Gala dinner';
+  }
+
+  trackByActivity(_: number, entry: TStaffActivityEntry) {
+    return `${entry.type}:${entry.primaryId}:${entry.at}`;
   }
 
   pct(n: number, d: number) {

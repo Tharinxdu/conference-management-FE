@@ -16,6 +16,7 @@ import { Subject, takeUntil, finalize } from 'rxjs';
 import { AuthService } from '../../services/auth.service';
 import { RegisterRequest } from '../../services/auth.types';
 import { PageShell } from '../../page-shell/page-shell';
+import { SESSION_EXPIRED_MESSAGE, SESSION_EXPIRED_SNACK } from '../session-notice';
 
 type TabKey = 'loginTab' | 'registerTab';
 type FormScope = 'login' | 'register' | 'forgot';
@@ -45,6 +46,13 @@ export class AuthComponent implements OnInit, OnDestroy {
   forgotStatus = signal('');
 
   showForgotModal = signal(false);
+
+  /**
+   * Shown when the user was bounced here by an expired session. Stays put until
+   * they sign in — a toast alone is too easy to miss at a busy desk.
+   */
+  sessionExpired = signal(false);
+  readonly sessionExpiredMessage = SESSION_EXPIRED_MESSAGE;
 
   // Password visibility toggles
   showLoginPassword = signal(false);
@@ -87,6 +95,10 @@ export class AuthComponent implements OnInit, OnDestroy {
     });
   }
 
+  dismissSessionExpired(): void {
+    this.sessionExpired.set(false);
+  }
+
   ngOnInit(): void {
     // ✅ Show snackbar messages passed from other routes (e.g., reset-password success)
     this.route.queryParamMap
@@ -97,6 +109,13 @@ export class AuthComponent implements OnInit, OnDestroy {
 
         if (snackKey === 'reset-success') {
           this.toastSuccess('Password updated. Please log in.');
+          this.activeTab.set('loginTab');
+          this.closeForgotModal();
+        }
+
+        if (snackKey === SESSION_EXPIRED_SNACK) {
+          this.sessionExpired.set(true);
+          this.toastError(SESSION_EXPIRED_MESSAGE);
           this.activeTab.set('loginTab');
           this.closeForgotModal();
         }

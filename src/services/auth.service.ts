@@ -27,6 +27,13 @@ export class AuthService {
   private readonly userSubject = new BehaviorSubject<AuthUser | null>(null);
   readonly user$ = this.userSubject.asObservable();
 
+  /**
+   * True once someone has actually signed in during this browser session.
+   * Lets the guards tell "your session ran out" apart from "you were never
+   * logged in", so only the former gets a session-expired message.
+   */
+  private hadSession = false;
+
   constructor(private readonly http: HttpClient) {}
 
   private unwrapUser(res: MeResponse | null | undefined): AuthUser | null {
@@ -46,7 +53,10 @@ export class AuthService {
       .get<MeResponse>(`${this.baseUrl}/me`, { withCredentials: true })
       .pipe(
         map((res) => this.unwrapUser(res)),
-        tap((user) => this.userSubject.next(user)),
+        tap((user) => {
+          if (user) this.hadSession = true;
+          this.userSubject.next(user);
+        }),
         catchError(() => {
           this.userSubject.next(null);
           return of(null);
@@ -79,17 +89,37 @@ export class AuthService {
       .pipe(switchMap(() => this.me(true)));
   }
 
+  /** Deliberate sign-out: clears the cache so guards stop seeing a stale user. */
   logout(): Observable<void> {
     return this.http
       .post<void>(`${this.baseUrl}/logout`, {}, { withCredentials: true })
       .pipe(
-        tap(() => this.userSubject.next(null)),
+        tap(() => this.forgetSession()),
         map(() => void 0),
         catchError(() => {
-          this.userSubject.next(null);
+          this.forgetSession();
           return of(void 0);
         })
       );
+  }
+
+  /**
+   * Drop the cached user after the server rejected us (expired token), keeping
+   * `hadSession` set so the login page can explain what happened.
+   */
+  clearSession(): void {
+    this.userSubject.next(null);
+  }
+
+  /** Forget everything, including that a session ever existed. */
+  private forgetSession(): void {
+    this.hadSession = false;
+    this.userSubject.next(null);
+  }
+
+  /** Did this browser session ever hold a signed-in user? */
+  wasSignedIn(): boolean {
+    return this.hadSession;
   }
 
   forgotPassword(payload: ForgotPasswordRequest): Observable<string> {

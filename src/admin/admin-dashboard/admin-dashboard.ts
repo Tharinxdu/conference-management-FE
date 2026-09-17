@@ -7,8 +7,9 @@ import { AdminDashboardService, TAdminDashboardStats } from "../../services/admi
 
 // Existing feature pages (they already render <app-page-shell> inside)
 import { AdminAbstract } from "../admin-abstract/admin-abstract";
-import { CheckIn } from "../check-in/check-in";
+import { CheckInConsole } from "../../shared/check-in-console/check-in-console";
 import { AdminRegistration } from "../admin-registration/admin-registration";
+import { AuthService } from "../../services/auth.service";
 
 type TNavKey = "dashboard" | "abstracts" | "checkin" | "registrations";
 
@@ -36,7 +37,7 @@ export class AdminDashboard {
   readonly viewComponent = computed(() => {
     const key = this.active();
     if (key === "abstracts") return AdminAbstract;
-    if (key === "checkin") return CheckIn;
+    if (key === "checkin") return CheckInConsole;
     if (key === "registrations") return AdminRegistration;
     return null;
   });
@@ -74,6 +75,7 @@ export class AdminDashboard {
 
   constructor(
     private readonly admin: AdminDashboardService,
+    private readonly auth: AuthService,
     private readonly router: Router
   ) { }
 
@@ -85,18 +87,23 @@ export class AdminDashboard {
     this.refresh$.next();
   }
 
+  /**
+   * Log out through AuthService so its cached user is cleared. Posting to the
+   * logout endpoint directly left that cache populated, and authRedirectGuard
+   * then bounced the user straight back into the dashboard.
+   */
   logout() {
     if (this.busy()) return;
 
     this.busy.set(true);
-    this.admin
+    this.auth
       .logout()
       .pipe(
-        catchError(() => of({ ok: true })),
+        catchError(() => of(void 0)),
         finalize(() => this.busy.set(false))
       )
       .subscribe(() => {
-        this.router.navigateByUrl("/login");
+        this.router.navigateByUrl("/auth");
       });
   }
 

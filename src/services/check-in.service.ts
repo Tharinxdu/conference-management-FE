@@ -1,4 +1,4 @@
-// FILE: src/admin/check-in/check-in.service.ts
+// FILE: src/services/check-in.service.ts
 import { Injectable, inject } from "@angular/core";
 import { HttpClient } from "@angular/common/http";
 import { environment } from "../environments/environment";
@@ -8,7 +8,7 @@ import type {
   ConfirmQrResponse,
   PreviewByRegistrationIdResponse,
   PreviewQrResponse,
-} from "../admin/check-in/check-in.types";
+} from "../shared/check-in-console/check-in.types";
 
 @Injectable({ providedIn: "root" })
 export class CheckInService {

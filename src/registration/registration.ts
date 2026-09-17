@@ -2,7 +2,7 @@ import { Component, signal, OnInit, ChangeDetectorRef, ChangeDetectionStrategy }
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { environment } from '../environments/environment';
-import { HttpClient, HttpClientModule } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { EMPTY } from 'rxjs';
 import { catchError, finalize } from 'rxjs/operators';
 import { PageShell } from '../page-shell/page-shell';
@@ -298,7 +298,7 @@ export function calculateFee(args: {
 @Component({
   selector: 'app-registration',
   standalone: true,
-  imports: [CommonModule, FormsModule, HttpClientModule, PageShell, MatSnackBarModule],
+  imports: [CommonModule, FormsModule, PageShell, MatSnackBarModule],
   templateUrl: './registration.html',
   styleUrl: './registration.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

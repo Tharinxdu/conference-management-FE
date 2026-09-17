@@ -1,0 +1,24 @@
+/* FILE: src/shared/registrations-directory/registrations-directory.scss */
+@use '../styles/directory';
+
+/* Page-specific bits only — the directory chrome lives in the shared partial. */
+
+.summary__stats {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 780px) {
+  .summary__stats {
+    grid-template-columns: 1fr;
+  }
+}
+
+.conf__sub {
+  margin-top: 3px;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+}
+
+.action-col {
+  width: 130px;
+}

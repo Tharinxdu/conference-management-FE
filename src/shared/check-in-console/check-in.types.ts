@@ -1,4 +1,4 @@
-// FILE: src/admin/check-in/check-in.types.ts
+// FILE: src/shared/check-in-console/check-in.types.ts
 export type QrLifecycleStatus = "ACTIVE" | "REVOKED" | "EXPIRED";
 export type CheckInStatus = "NOT_CHECKED_IN" | "CHECKED_IN";
 export type PaymentStatus = "UNPAID" | "PENDING" | "PAID" | "FAILED";

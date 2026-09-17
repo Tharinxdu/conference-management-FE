@@ -1,9 +1,32 @@
-import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+// FILE: src/services/staff-gala-dashboard.service.ts
+//
+// Staff dashboard data. Staff now work both doors, so this covers conference
+// check-in as well as gala redemption despite the historical file name.
+import { Injectable, inject } from '@angular/core';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { Observable } from 'rxjs';
 import { environment } from '../environments/environment';
 
-export type TGalaStaffStats = {
-  range?: { from: string | null; to: string | null };
+export type TStaffActivityType = 'CHECK_IN' | 'REDEEM';
+
+export type TStaffActivityEntry = {
+  type: TStaffActivityType;
+  at: string;
+  /** Delegate name, or the gala buyer's name. */
+  label: string;
+  /** Registration ID, or ticket ID. */
+  primaryId: string;
+  /** Conference type, or the order ID. */
+  secondary: string | null;
+  byEmail: string | null;
+};
+
+export type TStaffDashboardStats = {
+  registrations: {
+    total: number;
+    checkedIn: number;
+    notCheckedIn: number;
+  };
 
   tickets: {
     totalPaidIssued: number;
@@ -13,19 +36,13 @@ export type TGalaStaffStats = {
 
   orders: {
     paidOrders: number;
+    notRedeemedOrders: number;
     partiallyRedeemedOrders: number;
     fullyRedeemedOrders: number;
-    notRedeemedOrders: number;
   };
 
-  recentRedemptions: Array<{
-    ticketId: string;
-    orderId: string | null;
-    buyerName: string | null;
-    buyerEmail: string | null;
-    redeemedAt: string | null; // ISO
-    redeemedByEmail?: string | null;
-  }>;
+  recentActivity: TStaffActivityEntry[];
+  updatedAt: string;
 };
 
 export type TRedeemedTicketsPage = {
@@ -42,62 +59,30 @@ export type TRedeemedTicketsPage = {
   }>;
 };
 
-export type TPaidOrdersPage = {
-  page: number;
-  limit: number;
-  total: number;
-  items: Array<{
-    orderId: string;
-    buyerName: string;
-    buyerEmail: string;
-    ticketCount: number;
-    redeemed: number;
-    remaining: number;
-    totalAmount: number;
-    currency: string;
-    paidAt: string | null;
-  }>;
-};
-
 @Injectable({ providedIn: 'root' })
 export class StaffGalaDashboardService {
+  private readonly http = inject(HttpClient);
   private readonly apiUrl = environment.apiUrl;
 
-  // ✅ Matches your Express mount: app.use("/api/staff/dashboard", staffDashboardRoutes);
+  // Matches the Express mount: app.use("/api/staff/dashboard", staffDashboardRoutes)
   private readonly base = `${this.apiUrl}/staff/dashboard`;
 
-  constructor(private readonly http: HttpClient) {}
-
-  /** Staff dashboard stats */
-  getStats(params?: { from?: string; to?: string }) {
-    return this.http.get<TGalaStaffStats>(`${this.base}/gala/stats`, {
+  /** Combined conference + gala stats with a merged activity feed. */
+  getStats(): Observable<TStaffDashboardStats> {
+    return this.http.get<TStaffDashboardStats>(`${this.base}/stats`, {
       withCredentials: true,
-      params: params as any,
     });
   }
 
-  /** Optional: paginated list of redeemed tickets */
-  getRedeemedTickets(params?: { page?: number; limit?: number }) {
+  /** Paginated log of redeemed coupons. */
+  getRedeemedTickets(params?: { page?: number; limit?: number }): Observable<TRedeemedTicketsPage> {
+    let httpParams = new HttpParams();
+    if (params?.page) httpParams = httpParams.set('page', String(params.page));
+    if (params?.limit) httpParams = httpParams.set('limit', String(params.limit));
+
     return this.http.get<TRedeemedTicketsPage>(`${this.base}/gala/redeemed`, {
+      params: httpParams,
       withCredentials: true,
-      params: params as any,
     });
-  }
-
-  /** Optional: paginated list of PAID orders with redeem progress + search */
-  getOrders(params?: { page?: number; limit?: number; q?: string }) {
-    return this.http.get<TPaidOrdersPage>(`${this.base}/gala/orders`, {
-      withCredentials: true,
-      params: params as any,
-    });
-  }
-
-  /** Logout (cookie clear) */
-  logout() {
-    return this.http.post<{ ok: true }>(
-      `${this.apiUrl}/auth/logout`,
-      {},
-      { withCredentials: true }
-    );
   }
 }
