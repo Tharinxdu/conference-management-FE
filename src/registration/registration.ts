@@ -278,9 +278,11 @@ export function calculateFee(args: {
   participantCategory: string;
   incomeGroup: string;
   date: Date;
+  /** Optional: force a period (used when the server says this email gets the early rate). */
+  period?: 'early' | 'late';
 }): number | null {
   const { conferenceType, participantCategory, incomeGroup } = args;
-  const period = getFeePeriod();
+  const period = args.period ?? getFeePeriod();
 
   if (conferenceType === 'rehab') {
     return FEE_RULES.rehab.ALL[period];
@@ -337,6 +339,10 @@ export class Registration implements OnInit {
   feePeriodText = '';
   feePeriodBadgeText = '';
 
+  // Set when the server says this specific email gets a different period
+  // (e.g. an early-bird exception after the cutoff). Null = use the normal period.
+  emailPeriodOverride: 'early' | 'late' | null = null;
+
   // UI state
   formStatus = '';
   submitting = false;
@@ -369,6 +375,11 @@ export class Registration implements OnInit {
     private readonly cdr: ChangeDetectorRef,
     private readonly snack: MatSnackBar
   ) { }
+
+  /** The period actually applied on screen (email override wins over the date). */
+  get effectivePeriod(): 'early' | 'late' {
+    return this.emailPeriodOverride ?? this.currentPeriod;
+  }
 
   /** True when this registrant will be charged in rupees. */
   get isLkrPayer(): boolean {
@@ -404,15 +415,7 @@ export class Registration implements OnInit {
     this.countries = Object.keys(COUNTRY_INCOME_GROUPS).sort();
 
     this.currentPeriod = getFeePeriod();
-    this.feePeriodBadgeText =
-      this.currentPeriod === 'early'
-        ? 'EARLY BIRD (1st Mar – 30th Sep 2026)'
-        : 'LATE (1st Oct – 28th Nov 2026)';
-
-    this.feePeriodText =
-      this.currentPeriod === 'early'
-        ? 'You are registering during the Early Bird period.'
-        : 'You are registering during the Late period.';
+    this.applyPeriodText();
 
     try {
       const res = await fetch('https://restcountries.com/v3.1/all?fields=name,cca2,idd,flags');
@@ -435,6 +438,55 @@ export class Registration implements OnInit {
       // optional toast:
       // this.toastError('Failed to load country codes. You can still continue.');
     }
+  }
+
+  /** Updates the badge + banner text from the period currently in effect. */
+  private applyPeriodText(): void {
+    const early = this.effectivePeriod === 'early';
+
+    this.feePeriodBadgeText = early
+      ? 'EARLY BIRD (1st Mar – 30th Sep 2026)'
+      : 'LATE (1st Oct – 28th Nov 2026)';
+
+    this.feePeriodText = early
+      ? 'You are registering during the Early Bird period.'
+      : 'You are registering during the Late period.';
+  }
+
+  /** Typing in the email box clears any previous server override until we re-check. */
+  onEmailChange(): void {
+    if (this.emailPeriodOverride !== null) {
+      this.emailPeriodOverride = null;
+      this.applyPeriodText();
+      this.updateFeeSummary();
+      this.cdr.markForCheck();
+    }
+  }
+
+  /**
+   * Ask the server which fee period applies to this email. The allowed-email
+   * list lives only on the server; we just get back "early" or "late".
+   * If the call fails we keep the normal display — the server still decides
+   * the real fee at registration time.
+   */
+  onEmailBlur(): void {
+    const email = (this.email || '').trim();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return;
+
+    this.http
+      .post<any>(`${this.apiUrl}/registrations/fee-period`, { email })
+      .pipe(catchError(() => EMPTY))
+      .subscribe((res) => {
+        const p = res?.period;
+        const next: 'early' | 'late' | null = p === 'early' || p === 'late' ? p : null;
+
+        // Only treat it as an override when it differs from the normal period.
+        this.emailPeriodOverride = next !== null && next !== this.currentPeriod ? next : null;
+
+        this.applyPeriodText();
+        this.updateFeeSummary();
+        this.cdr.markForCheck();
+      });
   }
 
   onCountryChange(): void {
@@ -514,6 +566,7 @@ export class Registration implements OnInit {
       participantCategory,
       incomeGroup: group,
       date: new Date(),
+      period: this.effectivePeriod,
     });
 
     if (fee == null) {
