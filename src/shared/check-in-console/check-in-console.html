@@ -1,7 +1,5 @@
-<app-page-shell
-  [title]="'Check-in'"
-  [subtitle]="'Scan conference registration QRs and gala dinner coupons from one screen.'"
->
+<app-page-shell [title]="'Check-in'"
+  [subtitle]="'Scan conference registration QRs and gala dinner coupons from one screen.'">
   <div headerRight class="header-actions">
     <span class="mode-badge" [class.mode-badge--gala]="mode() === 'gala'">
       <span aria-hidden="true">{{ activeMeta().icon }}</span>
@@ -18,16 +16,9 @@
         <div class="mode-card__label" id="modeLabel">Which QR are you scanning?</div>
 
         <div class="mode-switch" role="radiogroup" aria-labelledby="modeLabel">
-          <button
-            *ngFor="let m of modes; trackBy: trackByIndex"
-            class="mode-option"
-            type="button"
-            role="radio"
-            [attr.aria-checked]="mode() === m"
-            [class.active]="mode() === m"
-            [class.mode-option--gala]="m === 'gala'"
-            (click)="setMode(m)"
-          >
+          <button *ngFor="let m of modes; trackBy: trackByIndex" class="mode-option" type="button" role="radio"
+            [attr.aria-checked]="mode() === m" [class.active]="mode() === m" [class.mode-option--gala]="m === 'gala'"
+            (click)="setMode(m)">
             <span class="mode-option__icon" aria-hidden="true">{{ meta[m].icon }}</span>
             <span class="mode-option__text">
               <span class="mode-option__title">{{ meta[m].label }}</span>
@@ -49,24 +40,12 @@
       <div class="toolbar card">
         <div class="toolbar-row">
           <div class="tabs" role="tablist" aria-label="Check-in method">
-            <button
-              class="tab"
-              type="button"
-              role="tab"
-              [attr.aria-selected]="method() === 'scan'"
-              [class.active]="method() === 'scan'"
-              (click)="setMethod('scan')"
-            >
+            <button class="tab" type="button" role="tab" [attr.aria-selected]="method() === 'scan'"
+              [class.active]="method() === 'scan'" (click)="setMethod('scan')">
               Scan QR
             </button>
-            <button
-              class="tab"
-              type="button"
-              role="tab"
-              [attr.aria-selected]="method() === 'manual'"
-              [class.active]="method() === 'manual'"
-              (click)="setMethod('manual')"
-            >
+            <button class="tab" type="button" role="tab" [attr.aria-selected]="method() === 'manual'"
+              [class.active]="method() === 'manual'" (click)="setMethod('manual')">
               Enter {{ activeMeta().manualLabel }}
             </button>
           </div>
@@ -82,14 +61,9 @@
       <div class="grid">
         <!-- Scan -->
         <div class="card scanner-card" *ngIf="method() === 'scan'">
-          <app-qr-scanner
-            [title]="activeMeta().scanTitle"
-            [subtitle]="activeMeta().scanSubtitle"
-            [hint]="activeMeta().scanHint"
-            [accentColor]="activeMeta().accent"
-            (scanned)="onScanned($event)"
-            (scanError)="onScanError($event)"
-          ></app-qr-scanner>
+          <app-qr-scanner [title]="activeMeta().scanTitle" [subtitle]="activeMeta().scanSubtitle"
+            [hint]="activeMeta().scanHint" [accentColor]="activeMeta().accent" (scanned)="onScanned($event)"
+            (scanError)="onScanError($event)"></app-qr-scanner>
         </div>
 
         <!-- Manual -->
@@ -98,25 +72,14 @@
           <div class="card-subtitle">{{ activeMeta().manualHelp }}</div>
 
           <div class="form-row">
-  <input
-    type="text"
-    [formControl]="manualForm.controls.code"
-    (keydown.enter)="previewManual()"
-    [placeholder]="activeMeta().manualPlaceholder"
-    [attr.aria-label]="activeMeta().manualLabel"
-    autocomplete="off"
-    autocapitalize="characters"
-    spellcheck="false"
-  />
-  <button
-    class="primary-button"
-    type="button"
-    (click)="previewManual()"
-    [disabled]="loading() || manualForm.invalid"
-  >
-    {{ loading() ? 'Checking…' : 'Look up' }}
-  </button>
-</div>
+            <input type="text" [formControl]="manualForm.controls.code" (keydown.enter)="previewManual()"
+              [placeholder]="activeMeta().manualPlaceholder" [attr.aria-label]="activeMeta().manualLabel"
+              autocomplete="off" autocapitalize="characters" spellcheck="false" />
+            <button class="primary-button" type="button" (click)="previewManual()"
+              [disabled]="loading() || manualForm.invalid">
+              {{ loading() ? 'Checking…' : 'Look up' }}
+            </button>
+          </div>
 
           <div class="mini-hint">
             Nothing is recorded until you confirm on the next screen.
@@ -172,15 +135,9 @@
 
   <!-- Confirmation / result -->
   <div class="confirm-overlay" *ngIf="modalOpen()" (click)="closeModal()">
-    <div
-      class="confirm-modal"
-      [class.confirm-modal--gala]="(preview() || result())?.mode === 'gala'"
-      [class.confirm-modal--done]="!!result()"
-      (click)="$event.stopPropagation()"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Check-in"
-    >
+    <div class="confirm-modal" [class.confirm-modal--gala]="(preview() || result())?.mode === 'gala'"
+      [class.confirm-modal--done]="!!result()" (click)="$event.stopPropagation()" role="dialog" aria-modal="true"
+      aria-label="Check-in">
       <!-- STEP 1: confirm -->
       <ng-container *ngIf="preview() as p">
         <div class="confirm-header">
@@ -200,9 +157,9 @@
           <div class="state-row">
             <span class="chip" [class.accent]="!p.done" [class.warn]="p.done">
               {{
-                p.done
-                  ? (p.mode === 'gala' ? 'Already redeemed' : 'Already checked in')
-                  : 'Not yet ' + meta[p.mode].successVerb
+              p.done
+              ? (p.mode === 'gala' ? 'Already redeemed' : 'Already checked in')
+              : 'Not yet ' + meta[p.mode].successVerb
               }}
             </span>
             <span class="sub" *ngIf="p.doneAt">at {{ p.doneAt | date: 'short' }}</span>
@@ -229,20 +186,10 @@
         </div>
 
         <div class="confirm-footer">
-          <button
-            class="secondary-button"
-            type="button"
-            (click)="closeModal()"
-            [disabled]="loading()"
-          >
+          <button class="secondary-button" type="button" (click)="closeModal()" [disabled]="loading()">
             {{ canConfirm() ? 'Cancel' : 'Close' }}
           </button>
-          <button
-            class="primary-button"
-            type="button"
-            (click)="confirm()"
-            [disabled]="loading() || !canConfirm()"
-          >
+          <button class="primary-button" type="button" (click)="confirm()" [disabled]="loading() || !canConfirm()">
             {{ loading() ? 'Confirming…' : confirmLabel() }}
           </button>
         </div>
