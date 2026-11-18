@@ -173,6 +173,7 @@ export class CheckInConsole {
   }
 
   previewManual(): void {
+    if (this.loading()) return;
     this.errorMsg.set(null);
 
     const code = (this.manualForm.controls.code.value || '').trim().toUpperCase();

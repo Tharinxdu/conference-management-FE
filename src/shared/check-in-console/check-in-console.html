@@ -97,24 +97,26 @@
           <div class="card-title">Find by {{ activeMeta().manualLabel }}</div>
           <div class="card-subtitle">{{ activeMeta().manualHelp }}</div>
 
-          <form class="form-row" (ngSubmit)="previewManual()">
-            <input
-              type="text"
-              [formControl]="manualForm.controls.code"
-              [placeholder]="activeMeta().manualPlaceholder"
-              [attr.aria-label]="activeMeta().manualLabel"
-              autocomplete="off"
-              autocapitalize="characters"
-              spellcheck="false"
-            />
-            <button
-              class="primary-button"
-              type="submit"
-              [disabled]="loading() || manualForm.invalid"
-            >
-              {{ loading() ? 'Checking…' : 'Look up' }}
-            </button>
-          </form>
+          <div class="form-row">
+  <input
+    type="text"
+    [formControl]="manualForm.controls.code"
+    (keydown.enter)="previewManual()"
+    [placeholder]="activeMeta().manualPlaceholder"
+    [attr.aria-label]="activeMeta().manualLabel"
+    autocomplete="off"
+    autocapitalize="characters"
+    spellcheck="false"
+  />
+  <button
+    class="primary-button"
+    type="button"
+    (click)="previewManual()"
+    [disabled]="loading() || manualForm.invalid"
+  >
+    {{ loading() ? 'Checking…' : 'Look up' }}
+  </button>
+</div>
 
           <div class="mini-hint">
             Nothing is recorded until you confirm on the next screen.
