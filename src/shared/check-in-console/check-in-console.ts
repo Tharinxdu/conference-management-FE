@@ -31,6 +31,29 @@ const MAX_RECENT = 8;
 /** How long the success panel stays up before the modal gets out of the way. */
 const AUTO_CLOSE_MS = 2400;
 
+/** Rehab-only registration permits admission on 28 November 2026 only. */
+const REHAB_CHECKIN_DATE = '2026-11-28';
+const CONFERENCE_TIME_ZONE = 'Asia/Colombo';
+
+/** Use conference-local calendar dates, regardless of the staff device timezone. */
+function conferenceLocalDate(now: Date = new Date()): string {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: CONFERENCE_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(now);
+  const value = (type: string) => parts.find((part) => part.type === type)?.value ?? '';
+  return `${value('year')}-${value('month')}-${value('day')}`;
+}
+
+function rehabDateRestriction(conferenceType: unknown): string | null {
+  if (String(conferenceType ?? '').trim().toLowerCase() !== 'rehab') return null;
+  return conferenceLocalDate() === REHAB_CHECKIN_DATE
+    ? null
+    : 'Rehab-only registrations are valid for 28 November 2026 only. Check-in is not permitted on 26 or 27 November.';
+}
+
 /**
  * The check-in desk — used by both the admin and staff dashboards, so the two
  * roles see exactly the same screen.
@@ -215,6 +238,16 @@ export class CheckInConsole {
     const p = this.preview();
     if (!p || !this.canConfirm() || this.loading()) return;
 
+    // Recheck at confirmation in case the modal stayed open across midnight.
+    if (p.mode === 'conference') {
+      const conferenceType = p.fields.find((field) => field.label === 'Conference')?.value;
+      const dateRestriction = rehabDateRestriction(conferenceType);
+      if (dateRestriction) {
+        this.preview.set({ ...p, blockedReason: dateRestriction });
+        return;
+      }
+    }
+
     this.errorMsg.set(null);
     this.loading.set(true);
 
@@ -310,6 +343,7 @@ export class CheckInConsole {
     const paymentStatus = res?.paymentStatus;
 
     const name = [a.firstName, a.lastName].filter(Boolean).join(' ').trim() || 'Delegate';
+    const dateRestriction = rehabDateRestriction(a.conferenceType ?? res?.conferenceType);
 
     return {
       mode: 'conference',
@@ -330,7 +364,8 @@ export class CheckInConsole {
       doneAt: checkedInAt,
       doneByEmail: qr.checkedInByEmail || null,
       blockedReason:
-        paymentStatus && paymentStatus !== 'PAID' ? `Payment status is ${paymentStatus}` : null,
+        dateRestriction ||
+        (paymentStatus && paymentStatus !== 'PAID' ? `Payment status is ${paymentStatus}` : null),
     };
   }
 
