@@ -33,6 +33,22 @@ const DEFAULT_LIMIT = 25;
 /** How long the success panel stays up before the modal gets out of the way. */
 const AUTO_CLOSE_MS = 2400;
 
+/** Set to a Sri Lanka calendar date (YYYY-MM-DD) for local testing; null in production. */
+const CHECKIN_TEST_DATE: string | null = null;
+const REHAB_CHECKIN_DATE = '2026-11-28';
+const CONFERENCE_TIME_ZONE = 'Asia/Colombo';
+
+function conferenceLocalDate(): string {
+  if (CHECKIN_TEST_DATE) return CHECKIN_TEST_DATE;
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: CONFERENCE_TIME_ZONE,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(new Date());
+  const get = (type: string) => parts.find((p) => p.type === type)?.value || '';
+  return `${get('year')}-${get('month')}-${get('day')}`;
+}
+
+
 /**
  * Directory of registrations that are ready for the desk: PAID *and* QR issued.
  *
@@ -202,6 +218,15 @@ export class RegistrationsDirectory implements OnInit {
     return [row.title, row.firstName, row.lastName].filter(Boolean).join(' ').trim() || '—';
   }
 
+  /** Rehab-only delegates may attend on 28 November 2026 only. */
+  checkInBlockedReason(row: TRegistrationRow): string | null {
+    if (String(row.conferenceType || '').trim().toLowerCase() === 'rehab' &&
+        conferenceLocalDate() !== REHAB_CHECKIN_DATE) {
+      return 'Rehab-only registrations can only check in on 28 November 2026 (Sri Lanka time).';
+    }
+    return null;
+  }
+
   // ---------- manual check-in ----------
   openCheckIn(row: TRegistrationRow, event?: Event): void {
     event?.stopPropagation();
@@ -240,6 +265,13 @@ export class RegistrationsDirectory implements OnInit {
   confirmCheckIn(): void {
     const row = this.checkInTarget();
     if (!row || this.checkInBusy()) return;
+
+    // Enforce the rule at the action boundary as well as in the template.
+    const blockedReason = this.checkInBlockedReason(row);
+    if (blockedReason) {
+      this.checkInError.set(blockedReason);
+      return;
+    }
 
     this.checkInBusy.set(true);
     this.checkInError.set(null);
